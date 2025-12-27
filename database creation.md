@@ -97,10 +97,11 @@ CREATE TABLE chargers (
     location VARCHAR(255),
     street_name VARCHAR(255) NULL,
     city VARCHAR(255) NULL,
-    status ENUM('IDLE','CHARGING','ERROR') DEFAULT 'IDLE',
+    status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR') DEFAULT 'IDLE',
     last_charge_start DATETIME NULL,
     last_charge_end DATETIME NULL,
     last_charge_amount DECIMAL(10,2) NULL,
+    active_charge_id BIGINT NULL,
     is_24hours_open BOOLEAN DEFAULT FALSE,       -- Whether charger operates 24/7
     opening_time TIME NULL,                      -- Opening time (if not 24 hours)
     closing_time TIME NULL,                      -- Closing time (if not 24 hours)
@@ -109,7 +110,8 @@ CREATE TABLE chargers (
     price_per_kwh DECIMAL(10,2) NULL,            -- Charging price per kWh
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT
+    FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT,
+    FOREIGN KEY (active_charge_id) REFERENCES charges(id) ON DELETE SET NULL
 );
 
 -- ========================
@@ -119,7 +121,7 @@ INSERT INTO chargers (agent_id, serial_number, location)
 VALUES (2, 'CHG-001-XYZ', 'Colombo 03');
 
 -- ========================
--- Charges table (optional, for detailed history)
+-- Charges table 
 -- ========================
 CREATE TABLE charges (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -127,9 +129,15 @@ CREATE TABLE charges (
     customer_id BIGINT NULL,
     start_time DATETIME NOT NULL,
     end_time DATETIME NULL,
+    meter_start DECIMAL(12,5) NULL,
+    meter_stop DECIMAL(12,5) NULL,
     amount DECIMAL(10,2) NULL,
-    status ENUM('PENDING','COMPLETED','CANCELLED') DEFAULT 'PENDING',
+    status ENUM('PENDING', 'CHARGING','COMPLETED', 'PAUSED', 'CANCELLED') DEFAULT 'PENDING',
+    vehicle_number VARCHAR(255),
+    ocpp_transaction_id INT NULL,
+    note TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (charger_id) REFERENCES chargers(id) ON DELETE CASCADE,
     FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE SET NULL
 );

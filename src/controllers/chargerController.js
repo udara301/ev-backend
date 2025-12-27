@@ -297,15 +297,25 @@ export const assignChargerToAgent = async (req, res) => {
     console.error("Error assigning charger:", err);
     res.status(500).json({ message: "Server error" });
   }
-  
+
 };
-
-
 
 // Get all chargers for logged-in agent
 export const getChargersForAgent = async (req, res) => {
   try {
-    const agentId = req.user.id;
+    const userId = req.user.id;
+
+    const [agentRows] = await pool.query(
+      "SELECT id FROM agents WHERE user_id = ?",
+      [userId]
+    );
+
+    if (agentRows.length === 0) {
+      return res.status(403).json({ message: "Agent profile not found" });
+    }
+
+    const agentId = agentRows[0].id;
+
     const [rows] = await pool.query("SELECT * FROM chargers WHERE agent_id=?", [agentId]);
     res.json(rows);
   } catch (err) {
@@ -314,8 +324,99 @@ export const getChargersForAgent = async (req, res) => {
   }
 };
 
+// =====================================================
+// Edit Charger Details (Agent Endpoint)
+// =====================================================
+export const editChargerAgent = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
+    if (req.user.role !== "AGENT_ADMIN")
+      return res.status(403).json({ message: "Forbidden" });
 
+    // Step 1: Find agent ID linked to this user
+    const [agentRows] = await pool.query(
+      "SELECT id FROM agents WHERE user_id = ?",
+      [userId]
+    );
+
+    if (agentRows.length === 0) {
+      return res.status(403).json({ message: "Agent profile not found" });
+    }
+
+    const agentId = agentRows[0].id;
+
+    // Step 2: Extract data from request
+    const {
+      id,                // Charger ID
+      name,
+      location,
+      street_name,
+      city,
+      price_per_kwh,
+      is_24hours_open,
+      opening_time,
+      closing_time,
+      notes
+    } = req.body;
+
+    // Step 3: Verify that charger belongs to this agent
+    const [chargerRows] = await pool.query(
+      "SELECT id, agent_id FROM chargers WHERE id = ?",
+      [id]
+    );
+
+    if (chargerRows.length === 0) {
+      return res.status(404).json({ message: "Charger not found" });
+    }
+
+    const charger = chargerRows[0];
+
+    if (charger.agent_id !== agentId) {
+      return res.status(403).json({ message: "You are not authorized to edit this charger" });
+    }
+
+    // Step 4: Update charger details
+    const [result] = await pool.query(
+      `
+      UPDATE chargers
+      SET
+        name = ?,
+        location = ?,
+        street_name = ?,
+        city = ?,
+        price_per_kwh = ?,
+        is_24hours_open = ?,
+        opening_time = ?,
+        closing_time = ?,
+        notes = ?,
+        updated_at = NOW()
+      WHERE id = ?
+      `,
+      [
+        name,
+        location,
+        street_name,
+        city,
+        price_per_kwh,
+        is_24hours_open,
+        opening_time || null,
+        closing_time || null,
+        notes,
+        id
+      ]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ message: "No updates were made" });
+    }
+
+    res.json({ message: "Charger details updated successfully" });
+  } catch (err) {
+    console.error("Error editing charger:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 // =====================================================
 // Unassign Charger to Agent  (Agent Endpoint)

@@ -7,7 +7,7 @@ import {
     deleteChargerType,
     getChargerTypeById,
     updateChargerType,
-    getChargerTypesNames
+    getChargerTypesNames,
 } from "../controllers/chargerTypeController.js";
 
 const router = express.Router();
