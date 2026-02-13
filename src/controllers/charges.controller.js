@@ -28,12 +28,6 @@ export const startCharging = async (req, res) => {
             return res.status(400).json({ message: "Charger is already in use" });
         }
 
-        const started = sendRemoteStart(chargerId);
-
-        if (!started) {
-            await connection.rollback();
-            return res.status(400).json({ message: "Charger is offline" });
-        }
 
         // 2️⃣ Create charge session
         const [result] = await connection.query(
@@ -47,13 +41,20 @@ export const startCharging = async (req, res) => {
         // 3️⃣ Update charger status
         await connection.query(
             `UPDATE chargers 
-       SET status = 'PENDING', last_charge_start = NOW(),
+       SET status = 'PENDING',
         active_charge_id = ?
        WHERE id = ?`,
             [chargeId, chargerId]
         );
 
         await connection.commit();
+
+        const started = sendRemoteStart(chargerId);
+
+        if (!started) {
+            await connection.rollback();
+            return res.status(400).json({ message: "Charger is offline" });
+        }
 
         res.status(201).json({
             message: "Charging command sent successfully",
@@ -78,7 +79,8 @@ export const startCharging = async (req, res) => {
 
 export const updateChargeWithOcppTx = async (chargeId, { ocpp_transaction_id, status, meter_start, start_time }) => {
     const connection = await pool.getConnection();
-     try {
+    console.log("Updating charge:", chargeId, "with OCPP TX ID:", ocpp_transaction_id, "status:", status);
+    try {
         await connection.query(
             `UPDATE charges
              SET ocpp_transaction_id = ?, 
@@ -167,10 +169,11 @@ export async function createCharge(payload) {
 // update the active charge and charger status in charger table
 // =====================================================
 
-export async function setActiveChargeAndStatus(chargerId, chargeId, status) {
+export async function setActiveChargeAndStatus(chargerId, chargeId, status, amount) {
     const connection = await pool.getConnection();
-
+    console.log("Updating charger:", chargerId, "with charge:", chargeId, "status:", status, "amount:", amount);
     try {
+        
         // Update charger table
         await connection.query(
             `UPDATE chargers
@@ -184,8 +187,12 @@ export async function setActiveChargeAndStatus(chargerId, chargeId, status) {
             `SELECT * FROM chargers WHERE id = ?`,
             [chargerId]
         );
-
+        console.log("Updated charger:", rows[0]);
         return rows[0];
+    }
+    catch (error) {
+        console.error("Error updating charger:", error);
+        throw error;
     } finally {
         connection.release();
     }
@@ -204,7 +211,7 @@ export const stopCharging = async (req, res) => {
         await connection.beginTransaction();
 
         const { chargerId } = req.params;
-        const { energy_used_kwh } = req.body;
+
 
         // 1️⃣ Find active charge
         const [charges] = await connection.query(
@@ -219,45 +226,18 @@ export const stopCharging = async (req, res) => {
             return res.status(404).json({ message: "No active charging session found" });
         }
 
-        sendRemoteStop(chargerId, charges[0].ocpp_transaction_id);
+        const stopped = sendRemoteStop(chargerId, charges[0].ocpp_transaction_id);
 
-            const charge = charges[0];
+        if (!stopped) {
+            await connection.rollback();
+            return res.status(400).json({ message: "Charger is offline" });
+        }
 
-            // 2️⃣ Get price per kWh
-            const [chargers] = await connection.query(
-                "SELECT price_per_kwh FROM chargers WHERE id = ?",
-                [chargerId]
-            );
-
-            const pricePerKwh = chargers[0]?.price_per_kwh || 0;
-            const amount = energy_used_kwh ? energy_used_kwh * pricePerKwh : 0;
-
-            // 3️⃣ Update charge record
-            await connection.query(
-                `UPDATE charges 
-        SET end_time = NOW(), amount = ?, status = 'COMPLETED'
-        WHERE id = ?`,
-                [amount, charge.id]
-            );
-
-            // 4️⃣ Update charger
-            await connection.query(
-                `UPDATE chargers 
-        SET status = 'IDLE', 
-            last_charge_end = NOW(), 
-            last_charge_amount = ?
-        WHERE id = ?`,
-                [amount, chargerId]
-            );
-
-            await connection.commit();
-
-            res.status(200).json({
-                message: "Charging stopped successfully",
-                charge_id: charge.id,
-                amount,
-                status: "COMPLETED",
-            });
+        res.status(200).json({
+            message: "Charging stop command sent successfully",
+            charge_id: charges[0].id,
+            status: "COMPLETED",
+        });
     } catch (error) {
         console.error("Error stopping charge:", error);
         await connection.rollback();
@@ -265,4 +245,50 @@ export const stopCharging = async (req, res) => {
     } finally {
         connection.release();
     }
+};
+
+
+// =====================================================
+// stop charging session with OCPP (request) transaction ID
+// =====================================================
+
+export const stopChargeWithOcppTx = async (chargeId, { end_time, meter_stop, amount, status }) => {
+    console.log("Stopping charge:", chargeId, "with status:", status, "meter_stop:", meter_stop, "amount:", amount);
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        await connection.query(
+            `UPDATE charges
+             SET 
+                 status = ?, 
+                 meter_stop = ?, 
+                 end_time = ?,
+                 amount = ?
+             WHERE id = ?`,
+            [status, meter_stop, end_time, amount, chargeId]
+        );
+
+        // Return the updated row
+        const [rows] = await connection.query(
+            `SELECT * FROM charges WHERE id = ?`,
+            [chargeId]
+        );
+
+        await connection.commit();
+        console.log("Updated charge:", rows[0]);
+        return rows[0];
+    } catch (error) {
+        console.error("Error in stopChargeWithOcppTx:", error);
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+
+};
+
+export const findByOcppTransactionId = async (ocppTransactionId) => {
+    const [rows] = await pool.query("SELECT * FROM charges WHERE ocpp_transaction_id = ?", [ocppTransactionId]);
+    return rows[0];
 };

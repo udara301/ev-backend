@@ -90,6 +90,7 @@ VALUES
 CREATE TABLE chargers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     agent_id BIGINT,
+    user_id BIGINT,
     charger_type_id BIGINT NOT NULL,
     serial_number VARCHAR(255) UNIQUE NOT NULL,
     checksum VARCHAR(255),
@@ -98,9 +99,6 @@ CREATE TABLE chargers (
     street_name VARCHAR(255) NULL,
     city VARCHAR(255) NULL,
     status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR') DEFAULT 'IDLE',
-    last_charge_start DATETIME NULL,
-    last_charge_end DATETIME NULL,
-    last_charge_amount DECIMAL(10,2) NULL,
     active_charge_id BIGINT NULL,
     is_24hours_open BOOLEAN DEFAULT FALSE,       -- Whether charger operates 24/7
     opening_time TIME NULL,                      -- Opening time (if not 24 hours)
@@ -110,15 +108,9 @@ CREATE TABLE chargers (
     price_per_kwh DECIMAL(10,2) NULL,            -- Charging price per kWh
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT,
-    FOREIGN KEY (active_charge_id) REFERENCES charges(id) ON DELETE SET NULL
+    FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT
 );
 
--- ========================
--- Sample charger for agent
--- ========================
-INSERT INTO chargers (agent_id, serial_number, location)
-VALUES (2, 'CHG-001-XYZ', 'Colombo 03');
 
 -- ========================
 -- Charges table 
@@ -141,6 +133,12 @@ CREATE TABLE charges (
     FOREIGN KEY (charger_id) REFERENCES chargers(id) ON DELETE CASCADE,
     FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE SET NULL
 );
+
+
+ALTER TABLE chargers
+ADD CONSTRAINT fk_active_charge
+FOREIGN KEY (active_charge_id) REFERENCES charges(id) ON DELETE SET NULL;
+
 
 -- ========================
 -- Customer wallet table

@@ -57,9 +57,6 @@ export const getChargersAdmin = async (req, res) => {
         c.name,
         c.location,
         c.status,
-        c.last_charge_start,
-        c.last_charge_end,
-        c.last_charge_amount,
         c.created_at AS charger_created_at,
 
         -- Charger Type Details
@@ -95,9 +92,6 @@ export const getChargersAdmin = async (req, res) => {
       name: row.name,
       location: row.location,
       status: row.status,
-      last_charge_start: row.last_charge_start,
-      last_charge_end: row.last_charge_end,
-      last_charge_amount: row.last_charge_amount,
       created_at: row.charger_created_at,
 
       charger_type: {
@@ -264,6 +258,7 @@ export const assignChargerToAgent = async (req, res) => {
       UPDATE chargers
       SET
         agent_id = ?,
+        user_id = ?,
         location = ?,
         street_name = ?,
         city = ?,
@@ -276,6 +271,7 @@ export const assignChargerToAgent = async (req, res) => {
       `,
       [
         agentId,
+        userId,
         location,
         street_name,
         city,
@@ -316,7 +312,36 @@ export const getChargersForAgent = async (req, res) => {
 
     const agentId = agentRows[0].id;
 
-    const [rows] = await pool.query("SELECT * FROM chargers WHERE agent_id=?", [agentId]);
+    const [rows] = await pool.query(`
+      SELECT 
+        c.*,
+        ct.model as charger_type_model,
+        ct.connector_type,
+        ct.max_power_kw,
+        ct.current_type,
+        ch.id as active_charge_id,
+        ch.start_time as charge_start_time,
+        ch.end_time as charge_end_time,
+        ch.meter_start,
+        ch.meter_stop,
+        ch.amount as charge_amount,
+        ch.status as charge_status,
+        ch.vehicle_number,
+        ch.ocpp_transaction_id,
+        ch.note as charge_note,
+        TIMESTAMPDIFF(SECOND, ch.start_time, NOW()) / 3600 as charge_duration_hours,
+        (ch.meter_stop - ch.meter_start) as energy_used_kwh,
+        u.name as customer_name,
+        u.email as customer_email
+      FROM chargers c
+      LEFT JOIN charger_types ct ON c.charger_type_id = ct.id
+      LEFT JOIN charges ch ON c.active_charge_id = ch.id
+      LEFT JOIN users u ON ch.customer_id = u.id
+      WHERE c.agent_id = ?
+      ORDER BY c.created_at DESC
+    `, [agentId]);
+    
+    console.log(rows);
     res.json(rows);
   } catch (err) {
     console.error(err);

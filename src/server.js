@@ -9,6 +9,7 @@ import agentRoutes from "./routes/agentRoutes.js";
 import chargerTypeRoutes from "./routes/chargerTypeRoutes.js";
 import chargesRoute from "./routes/chargesRoute.js";
 import "./ocpp/centralSystem.js";
+import { startFrontendWSServer } from "./websocket/frontendWS.js";
 
 dotenv.config();
 const app = express();
@@ -32,3 +33,6 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server running on http://localhost:${process.env.PORT}`);
 });
+
+// ✅ Start WebSocket server ONCE
+startFrontendWSServer(8081);

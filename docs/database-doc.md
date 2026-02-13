@@ -23,7 +23,7 @@ Relationships:
 
 **Chargers**
 
-Fields: id (PK), agent_id (FK → users.id), serial_number, location, status, last_charge_start, last_charge_end, last_charge_amount, created_at
+Fields: id (PK), agent_id (FK → users.id), serial_number, location, status, created_at
 
 Relationships:
 
