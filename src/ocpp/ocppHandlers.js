@@ -1,7 +1,7 @@
 // src/ocpp/ocppHandlers.js
 import * as chargerService from "../services/charger.service.js";
 import * as chargeController from "../controllers/charges.controller.js";
-import { sendToUser } from "../websocket/frontendWS.js";
+import { sendToUser } from "../websocket/frontendws.js";
 
 export async function handleOcppRequest({ ws, uid, action, payload, chargePointId }) {
     console.log("OCPP ACTION:", action);

@@ -9,7 +9,7 @@ import agentRoutes from "./routes/agentRoutes.js";
 import chargerTypeRoutes from "./routes/chargerTypeRoutes.js";
 import chargesRoute from "./routes/chargesRoute.js";
 import "./ocpp/centralSystem.js";
-import { startFrontendWSServer } from "./websocket/frontendWS.js";
+import { startFrontendWSServer } from "./websocket/frontendws.js";
 
 dotenv.config();
 const app = express();

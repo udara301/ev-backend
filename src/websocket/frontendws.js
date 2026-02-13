@@ -1,4 +1,4 @@
-// src/websocket/frontendWS.js
+// src/websocket/frontendws.js
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
