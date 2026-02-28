@@ -28,7 +28,7 @@ export const signup = async (req, res) => {
   }
 };
 
-// Login
+// Login (any user role)
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -46,6 +46,33 @@ export const login = async (req, res) => {
     );
 
     res.json({ message: "Login successful", token , role: user.role });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Login specifically for customers
+export const loginCustomer = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    if (rows.length === 0) return res.status(400).json({ message: "Invalid email or password" });
+
+    const user = rows[0];
+    if (user.role !== "CUSTOMER") {
+      return res.status(403).json({ message: "invalid login" });
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) return res.status(400).json({ message: "Invalid email or password" });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    res.json({ message: "Customer login successful", token, role: user.role });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

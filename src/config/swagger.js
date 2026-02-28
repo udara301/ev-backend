@@ -18,14 +18,19 @@ const options = {
         url: 'http://localhost:4000',
         description: 'Development server',
       },
-       
     ],
-     components: {
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+    components: {
       securitySchemes: {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
+          description: 'JWT Authorization header using the Bearer scheme. Example: "Authorization: Bearer {token}"',
         },
       },
     },

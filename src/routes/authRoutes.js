@@ -2,6 +2,7 @@ import express from "express";
 import {
   signup,
   login,
+  loginCustomer,
   forgotPassword,
   resetPassword,
   getProfile,
@@ -78,6 +79,37 @@ router.post("/signup", signup);
  *         description: Invalid credentials
  */
 router.post("/login", login);
+ 
+/**
+ * @swagger
+ * /api/v1/auth/login/customer:
+ *   post:
+ *     summary: Login user with customer role only
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Customer login successful, returns JWT token
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: User is not a customer
+ */
+router.post("/login/customer", loginCustomer);
 
 /**
  * @swagger
