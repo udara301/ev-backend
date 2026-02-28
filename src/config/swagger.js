@@ -11,12 +11,26 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:4000/api',
-        description: 'Local server',
+        url: 'https://drivewithev.com',
+        description: 'Production Server',
       },
+      {
+        url: 'http://localhost:4000',
+        description: 'Development server',
+      },
+       
     ],
+     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
-  apis: ['./routes/*.js'], // Path to your route files
+  apis: ['./src/routes/*.js'], // Fixed path
 };
 
 const swaggerSpec = swaggerJSDoc(options);
