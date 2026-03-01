@@ -10,8 +10,6 @@ USE ev_system;
 -- Users table
 -- ========================
 
-user table
-
 CREATE TABLE users (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -28,8 +26,8 @@ CREATE TABLE users (
 -- ========================
 
 INSERT INTO users (name, email, password_hash, role)
-VALUES ('ABC Company Admin', 'admin@abc.com', '$2b$10$VhPqjP7cV7rBv7/qjsGdZebx5z2V9JbK5Z9h5FjWjZ6cA7J3vT/6K', 'COMPANY_ADMIN');
--- Password is "admin123" (bcrypt hash)
+VALUES ('ABC Company Admin', 'admin@abc.com', '$2b$10$7bZVBelG2XfNq/0ZfkSWXOlB8qpFUtPQ.TkWrMSfamQH9PBddF/QK', 'COMPANY_ADMIN');
+-- Password is "SecurePass123!" (bcrypt hash)
 
 
 -- =========================================
@@ -89,16 +87,18 @@ VALUES
 -- ========================
 CREATE TABLE chargers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    agent_id BIGINT,
+    agent_id BIGINT NULL,
     user_id BIGINT,
     charger_type_id BIGINT NOT NULL,
     serial_number VARCHAR(255) UNIQUE NOT NULL,
     checksum VARCHAR(255),
     name VARCHAR(255),
     location VARCHAR(255),
+    latitude DECIMAL(11, 8),
+    longitude DECIMAL(10, 8),
     street_name VARCHAR(255) NULL,
     city VARCHAR(255) NULL,
-    status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR') DEFAULT 'IDLE',
+    status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'IDLE',
     active_charge_id BIGINT NULL,
     is_24hours_open BOOLEAN DEFAULT FALSE,       -- Whether charger operates 24/7
     opening_time TIME NULL,                      -- Opening time (if not 24 hours)
@@ -149,4 +149,36 @@ CREATE TABLE wallets (
     balance DECIMAL(10,2) DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ========================
+-- Wallet transactions
+-- ========================
+
+CREATE TABLE wallet_transactions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    wallet_id BIGINT NOT NULL,
+    charge_id BIGINT NULL, -- චාජ් එකකට කැපුණු සල්ලි නම්
+    amount DECIMAL(10,2) NOT NULL,
+    type ENUM('TOPUP', 'PAYMENT', 'REFUND') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
+    FOREIGN KEY (charge_id) REFERENCES charges(id) ON DELETE SET NULL
+);
+
+-- ========================
+-- Community (Crowdsourced) Chargers Table
+-- ========================
+CREATE TABLE community_chargers (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    submitted_by BIGINT NOT NULL,          -- who added this (Customer ID)
+    place_name VARCHAR(255) NOT NULL,      -- location name(eg: Liberty Plaza Parking)
+    description TEXT,                       -- description (eg: Near Gate 2)
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    connector_type VARCHAR(100),            -- Type 2, CCS2 
+    is_verified BOOLEAN DEFAULT FALSE,     --  whether confirmed by an admin
+    image_url VARCHAR(500) NULL,           -- sample photo 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE
 );

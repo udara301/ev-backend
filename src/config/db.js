@@ -9,4 +9,5 @@ export const pool = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
+  port: process.env.DB_PORT || 3306, // Change to your MySQL port if localdatabase is pointed to 3306
 });

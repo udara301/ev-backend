@@ -2,8 +2,9 @@
 import WebSocket from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { handleOcppRequest } from "../ocpp/ocppHandlers.js";
+import { setChargerUnavailable } from "../controllers/ocppController.js";
 
-const connectedChargers = new Map(); // chargePointId → WebSocket
+const connectedChargers = new Map(); // chargerName → WebSocket
 const SERVER_PORT = 8080;
 
 // Start WebSocket server
@@ -13,10 +14,10 @@ console.log(`🚀 OCPP Central System running on ws://localhost:${SERVER_PORT}`)
 // Handle new connections
 wss.on("connection", (ws, req) => {
   const urlParts = req.url.split("/");
-  const chargePointId = urlParts.pop();
+  const chargerName = urlParts.pop();
 
-  console.log(`🔌 Charger connected: ${chargePointId}`);
-  connectedChargers.set(chargePointId, ws);
+  console.log(`🔌 Charger connected: ${chargerName}`);
+  connectedChargers.set(chargerName, ws);
 
   ws.on("message", (message) => {
     try {
@@ -28,16 +29,21 @@ wss.on("connection", (ws, req) => {
         uid,
         action,
         payload,
-        chargePointId
-    });
+        chargerName
+      });
     } catch (err) {
       console.error("Invalid OCPP message:", err.message);
     }
   });
 
-  ws.on("close", () => {
-    console.log(`❌ Charger disconnected: ${chargePointId}`);
-    connectedChargers.delete(chargePointId);
+  ws.on("close", async () => {
+    connectedChargers.delete(chargerName);
+    try {
+      await setChargerUnavailable(chargerName);
+    } catch (err) {
+      console.error(`Error setting charger unavailable for ${chargerName}:`, err);
+    }
+    console.log(`❌ Charger disconnected: ${chargerName}`);
   });
 });
 
@@ -76,20 +82,20 @@ wss.on("connection", (ws, req) => {
 // }
 
 // Functions to send OCPP commands
-export function sendRemoteStart(chargePointId, idTag = "TESTUSER", connectorId = 1) {
-  const ws = connectedChargers.get(chargePointId);
-  if (!ws) return console.log(`⚠️ ${chargePointId} not connected`);
-  const uid = uuidv4();
-  const msg = [2, uid, "RemoteStartTransaction", { connectorId, idTag }];
-  ws.send(JSON.stringify(msg));
-  console.log(`➡️ Sent RemoteStartTransaction to ${chargePointId}`);
-}
+// export function sendRemoteStart(chargerName, idTag = "TESTUSER", connectorId = 1) {
+//   const ws = connectedChargers.get(chargerName);
+//   if (!ws) return console.log(`⚠️ ${chargerName} not connected`);
+//   const uid = uuidv4();
+//   const msg = [2, uid, "RemoteStartTransaction", { connectorId, idTag }];
+//   ws.send(JSON.stringify(msg));
+//   console.log(`➡️ Sent RemoteStartTransaction to ${chargerName}`);
+// }
 
-export function sendRemoteStop(chargePointId, transactionId = 1) {
-  const ws = connectedChargers.get(chargePointId);
-  if (!ws) return console.log(`⚠️ ${chargePointId} not connected`);
-  const uid = uuidv4();
-  const msg = [2, uid, "RemoteStopTransaction", { transactionId }];
-  ws.send(JSON.stringify(msg));
-  console.log(`➡️ Sent RemoteStopTransaction to ${chargePointId}`);
-}
+// export function sendRemoteStop(chargerName, transactionId = 1) {
+//   const ws = connectedChargers.get(chargerName);
+//   if (!ws) return console.log(`⚠️ ${chargerName} not connected`);
+//   const uid = uuidv4();
+//   const msg = [2, uid, "RemoteStopTransaction", { transactionId }];
+//   ws.send(JSON.stringify(msg));
+//   console.log(`➡️ Sent RemoteStopTransaction to ${chargerName}`);
+// }
