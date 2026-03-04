@@ -7,10 +7,13 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Signup
+// Signup for agent and admin (company admin can create agents, but not customers)
 export const signup = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
+    if (role == "CUSTOMER") {
+      return res.status(400).json({ message: "Invalid role" });
+    }
 
     const [userExists] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
     if (userExists.length > 0) return res.status(400).json({ message: "Email already exists" });
@@ -18,7 +21,7 @@ export const signup = async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     await pool.query(
       "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
-      [name, email, hash, role || "CUSTOMER"]
+      [name, email, hash, role]
     );
 
     res.json({ message: "Account created successfully" });
@@ -27,6 +30,42 @@ export const signup = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// POST /api/auth/signup (Public)
+export const signupCustomer = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { name, email, password, phone } = req.body;
+    await connection.beginTransaction();
+
+    const [userExists] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    if (userExists.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Email already exists" })
+    };
+
+
+    const hash = await bcrypt.hash(password, 10);
+    const [userResult] = await connection.query(
+      "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'CUSTOMER')", 
+      [name, email, hash]
+    );
+
+    const userId = userResult.insertId;
+    await connection.query("INSERT INTO customers (user_id, phone_number) VALUES (?, ?)", [userId, phone]);
+    await connection.query("INSERT INTO wallets (customer_id, balance) VALUES (?, 0)", [userId]);
+
+    await connection.commit();
+    res.json({ message: "Customer registered successfully" });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ message: "Server error" });
+  } finally {
+    connection.release();
+  }
+};
+
 
 // Login (any user role)
 export const login = async (req, res) => {
@@ -45,7 +84,7 @@ export const login = async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    res.json({ message: "Login successful", token , role: user.role });
+    res.json({ message: "Login successful", token, role: user.role });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

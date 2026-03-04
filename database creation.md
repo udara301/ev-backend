@@ -183,3 +183,18 @@ CREATE TABLE community_chargers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- ========================
+-- Customers table
+-- ========================
+
+CREATE TABLE customers (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  phone_number VARCHAR(20),
+  vehicle_model VARCHAR(100),
+  vehicle_number VARCHAR(50),
+  address TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

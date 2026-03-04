@@ -1,13 +1,14 @@
 import express from "express";
 import {
   signup,
+  signupCustomer,
   login,
   loginCustomer,
   forgotPassword,
   resetPassword,
   getProfile,
 } from "../controllers/authController.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
+import { verifyToken, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ const router = express.Router();
  * @swagger
  * /api/v1/auth/signup:
  *   post:
- *     summary: Register a new user
+ *     summary: Register a new agent (Endpoint accessible to Company Admin only)
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -41,15 +42,55 @@ const router = express.Router();
  *                 example: "SecurePass123!"
  *               role:
  *                 type: string
- *                 enum: [AGENT_ADMIN, AGENT, ADMIN, CUSTOMER]
- *                 example: "CUSTOMER"
+ *                 enum: [AGENT_ADMIN, AGENT_ADMIN]
+ *                 example: "AGENT_ADMIN"
  *     responses:
  *       201:
  *         description: User registered successfully
  *       400:
  *         description: Invalid input
  */
-router.post("/signup", signup);
+router.post("/signup", verifyToken, authorize(["COMPANY_ADMIN"]), signup);
+
+
+/**
+ * @swagger
+ * /api/v1/auth/customer-signup:
+ *   post:
+ *     summary: Register a new customer
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - name
+ *               - phone
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "john.doe@example.com"
+ *               password:
+ *                 type: string
+ *                 example: "SecurePass123!"
+ *               phone:
+ *                 type: string
+ *                 example: "+1234567890"
+ *     responses:
+ *       201:
+ *         description: Customer registered successfully
+ *       400:
+ *         description: Invalid input
+ */
+router.post("/customer-signup", signupCustomer); // Separate endpoint for customer signup (public)
 
 /**
  * @swagger
