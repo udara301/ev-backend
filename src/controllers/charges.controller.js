@@ -1,13 +1,31 @@
 import { pool } from "../config/db.js";
 import { sendRemoteStart, sendRemoteStop } from "../ocpp/ocppSender.js";
+import * as walletService from "../services/wallet.service.js";
 // =====================================================
 // start charging session
 // =====================================================
+// NEED TO WORK WITH START CHARGing 
 
 export const startCharging = async (req, res) => {
-    if (req.user.role !== "AGENT_ADMIN") {
-        return res.status(403).json({ message: "Forbidden" });
+    const userRole = req.user.role; // CUSTOMER, AGENT_ADMIN, etc.
+    // if (req.user.role !== "AGENT_ADMIN" ) {
+    //     // return res.status(403).json({ message: "Forbidden" });
+    // }
+    if (userRole === "CUSTOMER") {
+        const userId = req.user.id;
+        // 1️⃣ Wallet Balance check (Minimum 200 LKR)
+        const balance = await walletService.getBalance(userId);
+        const MIN_BALANCE = 200.00;
+        if (balance < MIN_BALANCE) {
+            return res.status(402).json({
+                message: "Insufficient balance",
+                required: MIN_BALANCE,
+                current: balance
+            });
+        }
     }
+    console.log("Starting charge for user:", req.user.id, "with role:", userRole);
+
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -120,7 +138,6 @@ export async function findPendingByCharger(chargerId) {
              LIMIT 1`,
             [chargerId]
         );
-
         return rows.length ? rows[0] : null;
     } finally {
         connection.release();
@@ -166,6 +183,27 @@ export async function createCharge(payload) {
 }
 
 // =====================================================
+// update the current meter readings while charging
+// =====================================================
+
+export async function updateMeterReadings(txId, meterStopValue) {
+    const connection = await pool.getConnection();
+
+    try {
+        // Update meter_stop
+        await connection.query(
+            `UPDATE charges
+             SET meter_stop = ?, 
+                 updated_at = NOW()
+             WHERE ocpp_transaction_id = ?`,
+            [meterStopValue, txId]
+        );
+    } finally {
+        connection.release();
+    }
+}
+
+// =====================================================
 // update the active charge and charger status in charger table
 // =====================================================
 
@@ -173,7 +211,7 @@ export async function setActiveChargeAndStatus(chargerId, chargeId, status, amou
     const connection = await pool.getConnection();
     console.log("Updating charger:", chargerId, "with charge:", chargeId, "status:", status, "amount:", amount);
     try {
-        
+
         // Update charger table
         await connection.query(
             `UPDATE chargers
@@ -187,7 +225,6 @@ export async function setActiveChargeAndStatus(chargerId, chargeId, status, amou
             `SELECT * FROM chargers WHERE id = ?`,
             [chargerId]
         );
-        console.log("Updated charger:", rows[0]);
         return rows[0];
     }
     catch (error) {
@@ -252,7 +289,7 @@ export const stopCharging = async (req, res) => {
 // stop charging session with OCPP (request) transaction ID
 // =====================================================
 
-export const stopChargeWithOcppTx = async (chargeId, { end_time, meter_stop, amount, status }) => {
+export const stopChargeWithChargeId = async (chargeId, { end_time, meter_stop, amount, status }) => {
     console.log("Stopping charge:", chargeId, "with status:", status, "meter_stop:", meter_stop, "amount:", amount);
     const connection = await pool.getConnection();
     try {
@@ -279,7 +316,7 @@ export const stopChargeWithOcppTx = async (chargeId, { end_time, meter_stop, amo
         console.log("Updated charge:", rows[0]);
         return rows[0];
     } catch (error) {
-        console.error("Error in stopChargeWithOcppTx:", error);
+        console.error("Error in stopChargeWithChargeId:", error);
         await connection.rollback();
         throw error;
     } finally {

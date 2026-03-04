@@ -1,10 +1,10 @@
 import { pool } from "../config/db.js";
 
-export async function updateStatus(chargePointName, status) {
+export async function updateStatus(chargePointId, status) {
     const conn = await pool.getConnection();
     try {
-        await conn.query("UPDATE chargers SET status = ? WHERE name = ?", [status, chargePointName]);
-        console.log(`Updated charger ${chargePointName} status to ${status}`);
+        await conn.query("UPDATE chargers SET status = ? WHERE id = ?", [status, chargePointId]);
+        console.log(`Updated charger ${chargePointId} status to ${status}`);
     } catch (error) {
         console.error("Error updating charger status:", error);
         throw error;

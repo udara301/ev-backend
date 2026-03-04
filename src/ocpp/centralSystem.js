@@ -1,6 +1,7 @@
 // src/ocpp/centralSystem.js
 import { WebSocketServer } from "ws";
 import { handleOcppRequest } from "./ocppHandlers.js";
+import { setChargerUnavailable } from "../controllers/ocppController.js";
 
 const PORT = 8080;
 
@@ -40,6 +41,7 @@ wss.on("connection", (ws, req) => {
 
     ws.on("close", () => {
         console.log(`❌ Charger disconnected: ${chargePointId}`);
+        setChargerUnavailable(chargePointId);
         connectedChargers.delete(chargePointId);
     });
 });

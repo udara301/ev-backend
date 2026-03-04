@@ -340,8 +340,6 @@ export const getChargersForAgent = async (req, res) => {
       WHERE c.agent_id = ?
       ORDER BY c.created_at DESC
     `, [agentId]);
-    
-    console.log(rows);
     res.json(rows);
   } catch (err) {
     console.error(err);

@@ -127,6 +127,7 @@ export const deleteCharger = async (req, res) => {
 export const verifyCharger = async (req, res) => {
   try {
     const { id } = req.params;
+    // need to check whether user is an admin
 
     const [result] = await pool.query(
       "UPDATE community_chargers SET is_verified = TRUE WHERE id=?",
