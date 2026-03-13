@@ -526,6 +526,91 @@ export const unassignCharger = async (req, res) => {
 
 
 
+// get charger public endpoint
+export const getChargersPublic = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        c.id AS charger_id,
+        c.serial_number,
+        c.name,
+        c.location,
+        c.status,
+       
+        -- Charger Type Details
+        ct.id AS type_id,
+        ct.model AS type_model,
+        ct.input_voltage,
+        ct.output_voltage,
+        ct.connector_type,
+        ct.max_power_kw,
+        ct.amperage,
+        ct.current_type,
+        ct.description,
+        ct.created_at AS type_created_at,
+
+        -- Agent Details (Optional)
+        a.id AS agent_id,
+        a.contact_person AS agent_contact_person,
+        a.phone_number AS agent_phone,
+        a.city AS agent_city,
+        a.status AS agent_status
+
+      FROM chargers c
+      JOIN charger_types ct ON c.charger_type_id = ct.id
+      LEFT JOIN agents a ON c.agent_id = a.id
+      ORDER BY c.id DESC
+    `);
+
+    // Transform flat SQL result into nested JSON
+    // Transform flat SQL result into required JSON
+    const chargers = rows.map(row => ({
+      name: row.name,
+      description: "24/7 EV charging hub near Colombo Fort.", // hardcoded
+      visibility: "public", // hardcoded
+
+      charger_id: `chg_${row.charger_id}`,
+      serial_number: row.serial_number,
+      status: row.status,
+
+      power_type: row.current_type || "DC",
+
+      connectors: [
+        {
+          connector_id: `con_${row.charger_id}`, // hardcoded pattern
+          type: row.connector_type,
+          max_power_kw: row.max_power_kw,
+          current_power_kw: 120, // hardcoded
+          price_per_kwh: 95.00, // hardcoded
+          status: "available" // hardcoded
+        }
+      ],
+
+      operating_hours: {
+        is_24_hours: true
+      },
+
+      amenities: [
+        "Restroom",
+        "WiFi",
+        "Cafe",
+        "Parking"
+      ],
+
+      created_at: "2026-02-25T09:30:00Z",
+      updated_at: "2026-03-02T14:45:00Z"
+    }));
+
+    res.json(chargers);
+  } catch (err) {
+    console.error("Error fetching chargers:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
 
 // Get charger report
 export const getChargerReport = async (req, res) => {

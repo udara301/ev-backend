@@ -8,12 +8,99 @@ import {
   getChargerReport,
   updateCharger,
   editChargerAgent,
-  unassignCharger
+  unassignCharger,
+  getChargersPublic
 
 } from "../controllers/chargerController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/v1/chargers/public/all-chargers:
+ *   get:
+ *     summary: List chargers for public view
+ *     description: Returns charger details formatted for public/mobile app consumption.
+ *     tags: [Chargers]
+ *     responses:
+ *       200:
+ *         description: Public charger list fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                     example: Fort EV Fast Hub
+ *                   description:
+ *                     type: string
+ *                     example: 24/7 EV charging hub near Colombo Fort.
+ *                   visibility:
+ *                     type: string
+ *                     example: public
+ *                   charger_id:
+ *                     type: string
+ *                     example: chg_12
+ *                   serial_number:
+ *                     type: string
+ *                     example: SN-CHG-2026-0001
+ *                   status:
+ *                     type: string
+ *                     example: active
+ *                   power_type:
+ *                     type: string
+ *                     example: DC
+ *                   connectors:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         connector_id:
+ *                           type: string
+ *                           example: con_12
+ *                         type:
+ *                           type: string
+ *                           example: CCS2
+ *                         max_power_kw:
+ *                           type: number
+ *                           example: 150
+ *                         current_power_kw:
+ *                           type: number
+ *                           example: 120
+ *                         price_per_kwh:
+ *                           type: number
+ *                           format: float
+ *                           example: 95
+ *                         status:
+ *                           type: string
+ *                           example: available
+ *                   operating_hours:
+ *                     type: object
+ *                     properties:
+ *                       is_24_hours:
+ *                         type: boolean
+ *                         example: true
+ *                   amenities:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     example: [Restroom, WiFi, Cafe, Parking]
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                     example: 2026-02-25T09:30:00Z
+ *                   updated_at:
+ *                     type: string
+ *                     format: date-time
+ *                     example: 2026-03-02T14:45:00Z
+ *       500:
+ *         description: Server error
+ */
+router.get("/public/all-chargers", getChargersPublic);
 
 // All routes protected
 router.use(verifyToken);

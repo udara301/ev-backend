@@ -34,8 +34,9 @@ app.get("/", (req, res) => {
   res.send("EV Charger System API is running...");
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on http://localhost:${process.env.PORT}`);
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 // ✅ Start WebSocket server ONCE
