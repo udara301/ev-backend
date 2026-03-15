@@ -25,7 +25,7 @@ export const createCharger = async (req, res) => {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO chargers (name, serial_number, checksum, charger_type_id)
+      `INSERT INTO chargers (ocpp_id, serial_number, checksum, charger_type_id)
        VALUES (?, ?, ?, ?)`,
       [name || null, serial_number, checksum, charger_type_id]
     );
@@ -54,7 +54,7 @@ export const getChargersAdmin = async (req, res) => {
         c.id AS charger_id,
         c.serial_number,
         c.checksum,
-        c.name,
+        c.ocpp_id,
         c.location,
         c.status,
         c.created_at AS charger_created_at,
@@ -89,7 +89,7 @@ export const getChargersAdmin = async (req, res) => {
       id: row.charger_id,
       serial_number: row.serial_number,
       checksum: row.checksum,
-      name: row.name,
+      name: row.ocpp_id,
       location: row.location,
       status: row.status,
       created_at: row.charger_created_at,
@@ -161,7 +161,7 @@ export const updateCharger = async (req, res) => {
     // Update charger (checksum is not updated)
     await pool.query(
       `UPDATE chargers
-       SET name = ?, serial_number = ?, charger_type_id = ?
+       SET ocpp_id = ?, serial_number = ?, charger_type_id = ?
        WHERE id = ?`,
       [name || null, serial_number, charger_type_id, chargerId]
     );
@@ -236,7 +236,7 @@ export const assignChargerToAgent = async (req, res) => {
 
     // Step 3: Verify charger details
     const [chargerRows] = await pool.query(
-      "SELECT id, agent_id FROM chargers WHERE id = ? AND name = ? AND checksum = ?",
+      "SELECT id, agent_id FROM chargers WHERE id = ? AND ocpp_id = ? AND checksum = ?",
       [id, name, checksum]
     );
 
@@ -404,7 +404,7 @@ export const editChargerAgent = async (req, res) => {
       `
       UPDATE chargers
       SET
-        name = ?,
+        ocpp_id = ?,
         location = ?,
         street_name = ?,
         city = ?,

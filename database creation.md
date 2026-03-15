@@ -67,7 +67,8 @@ CREATE TABLE charger_types (
     output_voltage VARCHAR(100),             
     connector_type VARCHAR(100) NULL,        -- e.g., "Type2", "CCS2", "CHAdeMO"
     max_power_kw DECIMAL(10,2) NULL,         -- e.g., 22.0 or 50.0
-    amperage VARCHAR(100),                
+    amperage VARCHAR(100),  
+    number_of_ports  INT DEFAULT 1,              
     current_type ENUM('AC', 'DC') DEFAULT 'AC',
     description TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -77,9 +78,9 @@ CREATE TABLE charger_types (
 -- Sample Charger Type
 -- ========================
 
-INSERT INTO charger_types (model, input_voltage, output_voltage, connector_type, max_power_kw, amperage, current_type)
+INSERT INTO charger_types (model, input_voltage, output_voltage, connector_type, number_of_ports, max_power_kw, amperage, current_type)
 VALUES 
-('ABC5010', '230V', '230V', 'Type 1', 7.4, '32A', 'AC' );
+('ABC5010', '230V', '230V', 'Type 1',2, 7.4, '32A', 'AC' );
 
 
 -- ========================
@@ -87,30 +88,42 @@ VALUES
 -- ========================
 CREATE TABLE chargers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ocpp_id VARCHAR(255) UNIQUE NOT NULL,
     agent_id BIGINT NULL,
     user_id BIGINT,
     charger_type_id BIGINT NOT NULL,
     serial_number VARCHAR(255) UNIQUE NOT NULL,
     checksum VARCHAR(255),
-    name VARCHAR(255),
     location VARCHAR(255),
     latitude DECIMAL(11, 8),
     longitude DECIMAL(10, 8),
     street_name VARCHAR(255) NULL,
     city VARCHAR(255) NULL,
-    status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'IDLE',
-    active_charge_id BIGINT NULL,
     is_24hours_open BOOLEAN DEFAULT FALSE,       -- Whether charger operates 24/7
     opening_time TIME NULL,                      -- Opening time (if not 24 hours)
     closing_time TIME NULL,                      -- Closing time (if not 24 hours)
     notes TEXT NULL,                             -- Optional notes about charger
+    amenities VARCHAR(255) NULL,.
     custom_parameters JSON NULL,                 -- JSON for flexible config params
     price_per_kwh DECIMAL(10,2) NULL,            -- Charging price per kWh
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT
 );
 
+-- ========================
+-- Charger connectors table 
+-- ========================
+
+CREATE TABLE connectors (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    charger_id BIGINT NOT NULL, -- Physical charger ID (e.g., CP001)
+    connector_id INT,        -- OCPP Connector ID (1, 2, 3...)
+    status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'IDLE',
+    active_charge_id BIGINT NULL,
+    FOREIGN KEY (charger_id) REFERENCES chargers(id) ON DELETE CASCADE
+);
 
 -- ========================
 -- Charges table 
@@ -118,6 +131,7 @@ CREATE TABLE chargers (
 CREATE TABLE charges (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     charger_id BIGINT NOT NULL,
+    connector_id INT NOT NULL,
     customer_id BIGINT NULL,
     start_time DATETIME NOT NULL,
     end_time DATETIME NULL,
@@ -136,7 +150,7 @@ CREATE TABLE charges (
 );
 
 
-ALTER TABLE chargers
+ALTER TABLE connectors
 ADD CONSTRAINT fk_active_charge
 FOREIGN KEY (active_charge_id) REFERENCES charges(id) ON DELETE SET NULL;
 
