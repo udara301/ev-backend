@@ -9,9 +9,9 @@ const router = express.Router();
  * @swagger
  * /api/v1/chargers:
  *   get:
- *     summary: List all chargers with details (Company Admin only)
+ *     summary: List all chargers with details 
  *     description: Retrieves a list of all chargers, including charger type, agent, and connector details. Requires COMPANY_ADMIN role.
- *     tags: [Chargers]
+ *     tags: [Public Endpoints]
  *     security:
  *       - bearerAuth: []  # Assuming JWT or similar auth
  *     responses:
