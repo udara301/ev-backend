@@ -23,6 +23,7 @@ router.use(verifyToken);
  *     tags: [Charger Types]
  *     security:
  *       - bearerAuth: []
+ *     description: Only COMPANY_ADMIN users can create charger types.
  *     requestBody:
  *       required: true
  *       content:
@@ -30,20 +31,44 @@ router.use(verifyToken);
  *           schema:
  *             type: object
  *             required:
- *               - name
- *               - power
+ *               - model
+ *               - input_voltage
+ *               - number_of_ports
+ *               - current_type
  *             properties:
- *               name:
+ *               model:
  *                 type: string
- *               power:
- *                 type: number
- *               connector:
+ *                 example: CHY4442
+ *               input_voltage:
  *                 type: string
+ *                 example: 400V AC
+ *               number_of_ports:
+ *                 type: integer
+ *                 example: 2
+ *               current_type:
+ *                 type: string
+ *                 enum: [AC, DC]
+ *                 example: DC
+ *               description:
+ *                 type: string
+ *                 example: Fast DC charger suitable for highway charging stations
  *     responses:
- *       201:
- *         description: Charger type created successfully
+ *       200:
+ *         description: Charger type added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Charger type added successfully
  *       400:
- *         description: Invalid input
+ *         description: Charger type already exists or invalid input
+ *       403:
+ *         description: Forbidden - Only COMPANY_ADMIN can perform this action
+ *       500:
+ *         description: Server error
  */
 router.post("/", addChargerType);
 

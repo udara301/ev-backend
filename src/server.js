@@ -11,6 +11,7 @@ import chargesRoute from "./routes/chargesRoute.js";
 import "./ocpp/centralSystem.js";
 import { startFrontendWSServer } from "./websocket/frontendws.js";
 import communityChargerRoutes from "./routes/communityChargerRoutes.js";
+import publicRoutes  from "./routes/publicRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -24,6 +25,7 @@ app.use("/api/v1/agents", agentRoutes);
 app.use("/api/v1/charger-types", chargerTypeRoutes);
 app.use("/api/v1/charges", chargesRoute);
 app.use("/api/v1/public-chargers", communityChargerRoutes);
+app.use("/api/v1/public", publicRoutes);
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

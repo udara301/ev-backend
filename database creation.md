@@ -64,10 +64,6 @@ CREATE TABLE charger_types (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     model VARCHAR(100) NOT NULL,              -- e.g., "AC Type 2", "DC Fast Charger"
     input_voltage VARCHAR(100),             
-    output_voltage VARCHAR(100),             
-    connector_type VARCHAR(100) NULL,        -- e.g., "Type2", "CCS2", "CHAdeMO"
-    max_power_kw DECIMAL(10,2) NULL,         -- e.g., 22.0 or 50.0
-    amperage VARCHAR(100),  
     number_of_ports  INT DEFAULT 1,              
     current_type ENUM('AC', 'DC') DEFAULT 'AC',
     description TEXT NULL,
@@ -121,6 +117,10 @@ CREATE TABLE connectors (
     charger_id BIGINT NOT NULL, -- Physical charger ID (e.g., CP001)
     connector_id INT,        -- OCPP Connector ID (1, 2, 3...)
     status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'IDLE',
+    output_voltage VARCHAR(100),             
+    connector_type VARCHAR(100) NULL,        -- e.g., "Type2", "CCS2", "CHAdeMO"
+    max_power_kw DECIMAL(10,2) NULL,         -- e.g., 22.0 or 50.0
+    amperage VARCHAR(100),  
     active_charge_id BIGINT NULL,
     FOREIGN KEY (charger_id) REFERENCES chargers(id) ON DELETE CASCADE
 );

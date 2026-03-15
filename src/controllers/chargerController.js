@@ -24,12 +24,25 @@ export const createCharger = async (req, res) => {
       return res.status(400).json({ message: "Serial number already exists" });
     }
 
+    const [typeRows] = await pool.query(
+      "SELECT number_of_ports FROM charger_types WHERE id = ?",
+      [charger_type_id]
+    );
+    const portCount = typeRows[0]?.number_of_ports || 1;
+
     const [result] = await pool.query(
       `INSERT INTO chargers (ocpp_id, serial_number, checksum, charger_type_id)
        VALUES (?, ?, ?, ?)`,
       [name || null, serial_number, checksum, charger_type_id]
     );
 
+    for (let i = 1; i <= portCount; i++) {
+      await pool.query(
+        "INSERT INTO connectors (charger_id, connector_id, status) VALUES (?, ?, 'AVAILABLE')",
+        [result.insertId, i]
+      );
+    }
+    
     res.json({
       message: "Charger added to system successfully",
       chargerId: result.insertId,
@@ -56,17 +69,11 @@ export const getChargersAdmin = async (req, res) => {
         c.checksum,
         c.ocpp_id,
         c.location,
-        c.status,
         c.created_at AS charger_created_at,
-
         -- Charger Type Details
         ct.id AS type_id,
         ct.model AS type_model,
         ct.input_voltage,
-        ct.output_voltage,
-        ct.connector_type,
-        ct.max_power_kw,
-        ct.amperage,
         ct.current_type,
         ct.description,
         ct.created_at AS type_created_at,
@@ -91,17 +98,12 @@ export const getChargersAdmin = async (req, res) => {
       checksum: row.checksum,
       name: row.ocpp_id,
       location: row.location,
-      status: row.status,
       created_at: row.charger_created_at,
 
       charger_type: {
         id: row.type_id,
         model: row.type_model,
         input_voltage: row.input_voltage,
-        output_voltage: row.output_voltage,
-        connector_type: row.connector_type,
-        max_power_kw: row.max_power_kw,
-        amperage: row.amperage,
         current_type: row.current_type,
         description: row.description,
         created_at: row.type_created_at
