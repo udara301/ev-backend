@@ -12,6 +12,8 @@ import "./ocpp/centralSystem.js";
 import { startFrontendWSServer } from "./websocket/frontendws.js";
 import communityChargerRoutes from "./routes/communityChargerRoutes.js";
 import publicRoutes  from "./routes/publicRoutes.js";
+import vehicleTypeRoutes from "./routes/vehicleTypeRoutes.js";
+import vehicleRoutes from "./routes/vehicleRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -26,6 +28,8 @@ app.use("/api/v1/charger-types", chargerTypeRoutes);
 app.use("/api/v1/charges", chargesRoute);
 app.use("/api/v1/public-chargers", communityChargerRoutes);
 app.use("/api/v1/public", publicRoutes);
+app.use("/api/v1/vehicle-models", vehicleTypeRoutes);
+app.use("/api/v1/vehicles", vehicleRoutes);
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -35,6 +39,7 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT;
+console.log(`Starting server on port ${PORT}...`);
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

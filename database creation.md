@@ -212,3 +212,71 @@ CREATE TABLE customers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+
+
+<!-- Renting -->
+
+    CREATE TABLE IF NOT EXISTS vehicle_models (
+        model_id INT AUTO_INCREMENT PRIMARY KEY,
+        model_name VARCHAR(100) NOT NULL,
+        brand VARCHAR(50) NOT NULL,
+        battery_capacity VARCHAR(50),
+        range_per_charge INT,
+        base_price_per_day DECIMAL(10, 2) NOT NULL,
+        image_url VARCHAR(255),
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS vehicles (
+        vehicle_id INT AUTO_INCREMENT PRIMARY KEY,
+        model_id INT,
+        plate_number VARCHAR(20) UNIQUE NOT NULL,
+        current_status ENUM('available', 'maintenance', 'rented') DEFAULT 'available',
+        last_service_date DATE,
+        FOREIGN KEY (model_id) REFERENCES vehicle_models(model_id) ON DELETE CASCADE
+    );
+
+    ALTER TABLE vehicles 
+    ADD COLUMN owner_id BIGINT NULL;
+    ALTER TABLE vehicles 
+    ADD CONSTRAINT fk_vehicle_owner 
+    FOREIGN KEY (owner_id) REFERENCES users(id) 
+    ON DELETE SET NULL;
+
+
+    CREATE TABLE IF NOT EXISTS bookings (
+    booking_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT, 
+    vehicle_id INT,
+    pickup_date DATETIME NOT NULL,
+    dropoff_date DATETIME NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    booking_status ENUM('pending', 'confirmed', 'ongoing', 'completed', 'cancelled') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method ENUM('card', 'cash', 'bank_transfer') NOT NULL,
+    transaction_id VARCHAR(100), -- Gateway එකෙන් එන reference එක
+    payment_status ENUM('pending', 'success', 'failed') DEFAULT 'pending',
+    paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS rental_reviews (
+    review_id INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT,
+    user_id BIGINT,
+    rating INT CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
