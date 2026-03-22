@@ -10,6 +10,7 @@ export const addVehicleModel = async (req, res) => {
         );
         res.status(201).json({ message: "Model created", id: result.insertId });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Server error" });
     }
 };
@@ -39,7 +40,23 @@ export const updateModel = async (req, res) => {
     }
 };
 
-// 4. Delete Model
+// 4. get Single Model by ID
+export const getModelById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await pool.query("SELECT * FROM vehicle_models WHERE model_id = ?", [id]);
+
+        if (!rows.length) {
+            return res.status(404).json({ message: "Model not found" });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+// 5. Delete Model
 export const deleteModel = async (req, res) => {
     try {
         const { id } = req.params;

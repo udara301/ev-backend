@@ -28,6 +28,25 @@ export const getAllVehicles = async (req, res) => {
     }
 };
 
+// 1. Get Single Vehicle by ID
+export const getVehicleById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await pool.query(`
+            SELECT v.*, m.model_name, m.brand
+            FROM vehicles v
+            JOIN vehicle_models m ON v.model_id = m.model_id
+            WHERE v.vehicle_id = ?
+        `, [id]);
+        if (!rows.length) {
+            return res.status(404).json({ message: "Vehicle not found" });
+        }
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 
 // 3. Update Vehicle Status (Maintenance දාන්න වගේ)
 export const updateVehicleStatus = async (req, res) => {

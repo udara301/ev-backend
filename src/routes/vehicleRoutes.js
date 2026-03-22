@@ -3,14 +3,12 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import {
 	addVehicleUnit,
 	getAllVehicles,
+	getVehicleById,
 	updateVehicleStatus,
-	deleteVehicle,
+	deleteVehicle
 } from "../controllers/vehicleController.js";
 
 const router = express.Router();
-
-// All routes protected
-router.use(verifyToken);
 
 /**
  * @swagger
@@ -53,7 +51,7 @@ router.use(verifyToken);
  *       500:
  *         description: Server error
  */
-router.post("/", addVehicleUnit);
+router.post("/", verifyToken, addVehicleUnit);
 
 /**
  * @swagger
@@ -61,8 +59,6 @@ router.post("/", addVehicleUnit);
  *   get:
  *     summary: List all vehicles with model details
  *     tags: [Vehicles]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of vehicles
@@ -100,12 +96,69 @@ router.post("/", addVehicleUnit);
  *                   brand:
  *                     type: string
  *                     example: Nissan
- *       401:
- *         description: Unauthorized
  *       500:
  *         description: Server error
  */
 router.get("/", getAllVehicles);
+
+/**
+ * @swagger
+ * /api/v1/vehicles/{id}:
+ *   get:
+ *     summary: Get vehicle by ID with model details
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Vehicle ID
+ *     responses:
+ *       200:
+ *         description: Vehicle details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 vehicle_id:
+ *                   type: integer
+ *                   example: 7
+ *                 model_id:
+ *                   type: integer
+ *                   example: 3
+ *                 plate_number:
+ *                   type: string
+ *                   example: CAA-4587
+ *                 current_status:
+ *                   type: string
+ *                   enum: [available, maintenance, rented]
+ *                   example: available
+ *                 last_service_date:
+ *                   type: string
+ *                   format: date
+ *                   nullable: true
+ *                 owner_id:
+ *                   type: integer
+ *                   nullable: true
+ *                   example: 21
+ *                 model_name:
+ *                   type: string
+ *                   example: Nissan Leaf 40kWh
+ *                 brand:
+ *                   type: string
+ *                   example: Nissan
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/:id", verifyToken, getVehicleById);
 
 /**
  * @swagger
@@ -151,7 +204,9 @@ router.get("/", getAllVehicles);
  *       500:
  *         description: Server error
  */
-router.put("/:id/status", updateVehicleStatus);
+router.put("/:id/status", verifyToken, updateVehicleStatus);
+
+
 
 /**
  * @swagger
@@ -184,6 +239,8 @@ router.put("/:id/status", updateVehicleStatus);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", deleteVehicle);
+router.delete("/:id", verifyToken, deleteVehicle);
+
+
 
 export default router;

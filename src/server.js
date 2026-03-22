@@ -14,6 +14,7 @@ import communityChargerRoutes from "./routes/communityChargerRoutes.js";
 import publicRoutes  from "./routes/publicRoutes.js";
 import vehicleTypeRoutes from "./routes/vehicleTypeRoutes.js";
 import vehicleRoutes from "./routes/vehicleRoutes.js";
+import locationRoutes from "./routes/locationRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -21,7 +22,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/auth", authRoutes);  
 app.use("/api/v1/chargers", chargerRoutes);
 app.use("/api/v1/agents", agentRoutes);
 app.use("/api/v1/charger-types", chargerTypeRoutes);
@@ -30,6 +31,7 @@ app.use("/api/v1/public-chargers", communityChargerRoutes);
 app.use("/api/v1/public", publicRoutes);
 app.use("/api/v1/vehicle-models", vehicleTypeRoutes);
 app.use("/api/v1/vehicles", vehicleRoutes);
+app.use("/api/v1/locations", locationRoutes);
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

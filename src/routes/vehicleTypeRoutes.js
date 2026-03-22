@@ -5,6 +5,7 @@ import {
     addVehicleModel,
     getAllModels,
     updateModel,
+    getModelById,
     deleteModel,
 } from "../controllers/vehicleModelsController.js";
 
@@ -127,6 +128,66 @@ router.post("/", addVehicleModel);
  *         description: Server error
  */
 router.get("/", getAllModels);
+
+/**
+ * @swagger
+ * /api/v1/vehicle-models/{id}:
+ *   get:
+ *     summary: Get a single vehicle model
+ *     tags: [Vehicle Models]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Vehicle model ID
+ *     responses:
+ *       200:
+ *         description: Vehicle model details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 model_id:
+ *                   type: integer
+ *                   example: 1
+ *                 model_name:
+ *                   type: string
+ *                   example: Nissan Leaf 40kWh
+ *                 brand:
+ *                   type: string
+ *                   example: Nissan
+ *                 battery_capacity:
+ *                   type: string
+ *                   example: 40 kWh
+ *                 range_per_charge:
+ *                   type: integer
+ *                   example: 270
+ *                 base_price_per_day:
+ *                   type: number
+ *                   format: float
+ *                   example: 12000
+ *                 image_url:
+ *                   type: string
+ *                   example: https://example.com/images/nissan-leaf.jpg
+ *                 description:
+ *                   type: string
+ *                   example: Compact EV suited for daily rentals and city driving.
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Model not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/:id", getModelById);
 
 /**
  * @swagger
