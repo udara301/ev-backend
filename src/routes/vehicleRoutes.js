@@ -3,10 +3,12 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import {
 	addVehicleUnit,
 	getAllVehicles,
+	getAllVehiclesByCategory,
 	getVehicleById,
 	updateVehicleStatus,
 	deleteVehicle
 } from "../controllers/vehicleController.js";
+
 
 const router = express.Router();
 
@@ -100,6 +102,28 @@ router.post("/", verifyToken, addVehicleUnit);
  *         description: Server error
  */
 router.get("/", getAllVehicles);
+
+/**
+ * @swagger
+ * /api/v1/vehicles/category:
+ *   get:
+ *     summary: List all vehicles grouped by category
+ *     tags: [Vehicles]
+ *     responses:
+ *       200:
+ *         description: Vehicles grouped by category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *       500:
+ *         description: Server error
+ */
+router.get("/category", getAllVehiclesByCategory);
 
 /**
  * @swagger

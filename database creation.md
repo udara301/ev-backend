@@ -222,6 +222,8 @@ CREATE TABLE customers (
         model_name VARCHAR(100) NOT NULL,
         brand VARCHAR(50) NOT NULL,
         battery_capacity VARCHAR(50),
+        category ENUM('scooter', 'bike', 'car', 'tuktuk'),
+        connector_type VARCHAR(50) COMMENT 'Type of the charging connector',
         range_per_charge INT,
         base_price_per_day DECIMAL(10, 2) NOT NULL,
         image_url VARCHAR(255),

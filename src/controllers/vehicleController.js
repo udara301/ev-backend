@@ -18,7 +18,7 @@ export const addVehicleUnit = async (req, res) => {
 export const getAllVehicles = async (req, res) => {
     try {
         const [rows] = await pool.query(`
-            SELECT v.*, m.model_name, m.brand 
+            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, m.passenger_count, m.image_url, m.range_per_charge, m.battery_capacity, m.charging_time, m.motor_power, m.connector_type 
             FROM vehicles v 
             JOIN vehicle_models m ON v.model_id = m.model_id
         `);
@@ -28,12 +28,45 @@ export const getAllVehicles = async (req, res) => {
     }
 };
 
+
+// 2.1 Read Units (Get all vehicles and model details)
+export const getAllVehiclesByCategory = async (req, res) => {
+      try {
+        const [rows] = await pool.query(`
+            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, 
+                   m.passenger_count, m.image_url, m.range_per_charge, 
+                   m.battery_capacity, m.charging_time, m.motor_power, m.connector_type 
+            FROM vehicles v 
+            JOIN vehicle_models m ON v.model_id = m.model_id
+            GROUP BY v.model_id
+        `);
+
+        // Group by category
+        const grouped = rows.reduce((acc, vehicle) => {
+            const category = vehicle.category;
+
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+
+            acc[category].push(vehicle);
+            return acc;
+        }, {});
+
+        res.json(grouped);
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+
 // 1. Get Single Vehicle by ID
 export const getVehicleById = async (req, res) => {
     try {
         const { id } = req.params;
         const [rows] = await pool.query(`
-            SELECT v.*, m.model_name, m.brand
+            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, m.passenger_count, m.image_url, m.range_per_charge, m.battery_capacity, m.charging_time, m.motor_power, m.connector_type
             FROM vehicles v
             JOIN vehicle_models m ON v.model_id = m.model_id
             WHERE v.vehicle_id = ?

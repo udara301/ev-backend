@@ -8,6 +8,7 @@ import {
     getModelById,
     deleteModel,
 } from "../controllers/vehicleModelsController.js";
+import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.use(verifyToken);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -45,13 +46,31 @@ router.use(verifyToken);
  *               range_per_charge:
  *                 type: integer
  *                 example: 270
+ *               charging_time:
+ *                 type: string
+ *                 example: 45 min (20-80%)
+ *               passenger_count:
+ *                 type: integer
+ *                 example: 5
+ *               is_featured:
+ *                 type: boolean
+ *                 example: true
+ *               category:
+ *                 type: string
+ *                 example: Hatchback
  *               base_price_per_day:
  *                 type: number
  *                 format: float
  *                 example: 12000
- *               image_url:
+ *               motor_power:
  *                 type: string
- *                 example: https://example.com/images/nissan-leaf.jpg
+ *                 example: 110 kW
+ *               connector_type:
+ *                 type: string
+ *                 example: CCS2
+ *               image:
+ *                 type: string
+ *                 format: binary
  *               description:
  *                 type: string
  *                 example: Compact EV suited for daily rentals and city driving.
@@ -74,13 +93,13 @@ router.use(verifyToken);
  *       500:
  *         description: Server error
  */
-router.post("/", addVehicleModel);
+router.post("/", upload.single('image'), addVehicleModel);
 
 /**
  * @swagger
  * /api/v1/vehicle-models:
  *   get:
- *     summary: List all vehicle models
+ *     summary: List all vehicle modelsp
  *     tags: [Vehicle Models]
  *     security:
  *       - bearerAuth: []
@@ -109,10 +128,28 @@ router.post("/", addVehicleModel);
  *                   range_per_charge:
  *                     type: integer
  *                     example: 270
+ *                   charging_time:
+ *                     type: string
+ *                     example: 45 min (20-80%)
+ *                   passenger_count:
+ *                     type: integer
+ *                     example: 5
+ *                   is_featured:
+ *                     type: boolean
+ *                     example: true
+ *                   category:
+ *                     type: string
+ *                     example: Hatchback
  *                   base_price_per_day:
  *                     type: number
  *                     format: float
  *                     example: 12000
+ *                   motor_power:
+ *                     type: string
+ *                     example: 110 kW
+ *                   connector_type:
+ *                     type: string
+ *                     example: CCS2
  *                   image_url:
  *                     type: string
  *                     example: https://example.com/images/nissan-leaf.jpg
@@ -167,10 +204,28 @@ router.get("/", getAllModels);
  *                 range_per_charge:
  *                   type: integer
  *                   example: 270
+ *                 charging_time:
+ *                   type: string
+ *                   example: 45 min (20-80%)
+ *                 passenger_count:
+ *                   type: integer
+ *                   example: 5
+ *                 is_featured:
+ *                   type: boolean
+ *                   example: true
+ *                 category:
+ *                   type: string
+ *                   example: Hatchback
  *                 base_price_per_day:
  *                   type: number
  *                   format: float
  *                   example: 12000
+ *                 motor_power:
+ *                   type: string
+ *                   example: 110 kW
+ *                 connector_type:
+ *                   type: string
+ *                   example: CCS2
  *                 image_url:
  *                   type: string
  *                   example: https://example.com/images/nissan-leaf.jpg
@@ -221,6 +276,36 @@ router.get("/:id", getModelById);
  *                 type: number
  *                 format: float
  *                 example: 14500
+ *               image_url:
+ *                 type: string
+ *                 example: https://example.com/images/byd-dolphin.jpg
+ *               description:
+ *                 type: string
+ *                 example: Compact EV with efficient city range.
+ *               battery_capacity:
+ *                 type: string
+ *                 example: 44.9 kWh
+ *               range_per_charge:
+ *                 type: integer
+ *                 example: 340
+ *               charging_time:
+ *                 type: string
+ *                 example: 30 min (30-80%)
+ *               passenger_count:
+ *                 type: integer
+ *                 example: 5
+ *               is_featured:
+ *                 type: boolean
+ *                 example: false
+ *               category:
+ *                 type: string
+ *                 example: Hatchback
+ *               motor_power:
+ *                 type: string
+ *                 example: 70 kW
+ *               connector_type:
+ *                 type: string
+ *                 example: CCS2
  *     responses:
  *       200:
  *         description: Vehicle model updated successfully
