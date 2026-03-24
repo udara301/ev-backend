@@ -18,7 +18,7 @@ export const addVehicleUnit = async (req, res) => {
 export const getAllVehicles = async (req, res) => {
     try {
         const [rows] = await pool.query(`
-            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, m.passenger_count, m.image_url, m.range_per_charge, m.battery_capacity, m.charging_time, m.motor_power, m.connector_type 
+            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, m.passenger_count, m.image_url, m.range_per_charge, m.deposit, m.top_speed, m.battery_capacity, m.charging_time, m.motor_power, m.ac_connector_type, m.dc_connector_type 
             FROM vehicles v 
             JOIN vehicle_models m ON v.model_id = m.model_id
         `);
@@ -34,8 +34,8 @@ export const getAllVehiclesByCategory = async (req, res) => {
       try {
         const [rows] = await pool.query(`
             SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, 
-                   m.passenger_count, m.image_url, m.range_per_charge, 
-                   m.battery_capacity, m.charging_time, m.motor_power, m.connector_type 
+                   m.passenger_count, m.image_url, m.range_per_charge, m.deposit, m.top_speed,
+                   m.battery_capacity, m.charging_time, m.motor_power, m.ac_connector_type, m.dc_connector_type 
             FROM vehicles v 
             JOIN vehicle_models m ON v.model_id = m.model_id
             GROUP BY v.model_id
@@ -66,7 +66,8 @@ export const getVehicleById = async (req, res) => {
     try {
         const { id } = req.params;
         const [rows] = await pool.query(`
-            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, m.passenger_count, m.image_url, m.range_per_charge, m.battery_capacity, m.charging_time, m.motor_power, m.connector_type
+            SELECT v.*, m.model_name, m.brand, m.category, m.base_price_per_day, m.passenger_count, m.image_url, m.range_per_charge, 
+            m.deposit, m.top_speed, m.battery_capacity, m.charging_time, m.motor_power, m.ac_connector_type, m.dc_connector_type
             FROM vehicles v
             JOIN vehicle_models m ON v.model_id = m.model_id
             WHERE v.vehicle_id = ?

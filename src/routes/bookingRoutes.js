@@ -64,7 +64,14 @@ const router = express.Router();
  *                   range_per_charge:
  *                     type: integer
  *                     example: 270
- *                   base_price_per_day:
+ *                  deposit:
+ *                    type: number
+ *                    format: float
+ *                    example: 5000
+ *                  top_speed:
+ *                   type: integer
+ *                    example: 150
+ *                  base_price_per_day:
  *                     type: number
  *                     format: float
  *                     example: 12000

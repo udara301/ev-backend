@@ -65,7 +65,10 @@ router.use(verifyToken);
  *               motor_power:
  *                 type: string
  *                 example: 110 kW
- *               connector_type:
+ *               ac_connector_type:
+ *                 type: string
+ *                 example: Type 2
+ *               dc_connector_type:
  *                 type: string
  *                 example: CCS2
  *               image:
@@ -147,7 +150,10 @@ router.post("/", upload.single('image'), addVehicleModel);
  *                   motor_power:
  *                     type: string
  *                     example: 110 kW
- *                   connector_type:
+ *                   ac_connector_type:
+ *                     type: string
+ *                     example: Type 2
+ *                   dc_connector_type:
  *                     type: string
  *                     example: CCS2
  *                   image_url:
@@ -223,7 +229,10 @@ router.get("/", getAllModels);
  *                 motor_power:
  *                   type: string
  *                   example: 110 kW
- *                 connector_type:
+ *                 ac_connector_type:
+ *                   type: string
+ *                   example: Type 2
+ *                 dc_connector_type:
  *                   type: string
  *                   example: CCS2
  *                 image_url:
@@ -303,7 +312,10 @@ router.get("/:id", getModelById);
  *               motor_power:
  *                 type: string
  *                 example: 70 kW
- *               connector_type:
+ *               ac_connector_type:
+ *                 type: string
+ *                 example: Type 2
+ *               dc_connector_type:
  *                 type: string
  *                 example: CCS2
  *     responses:
