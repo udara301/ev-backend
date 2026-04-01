@@ -10,7 +10,20 @@ import {
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-// All routes protected
+
+/**
+ * @swagger
+ * /api/v1/public-chargers:
+ *   get:
+ *     summary: Get all community chargers
+ *     tags: [Community Chargers]
+ *     responses:
+ *       200:
+ *         description: List of community chargers
+ */
+router.get("/", getAllChargers);
+
+// All routes below are protected
 router.use(verifyToken);
 
 /**
@@ -51,21 +64,6 @@ router.use(verifyToken);
  *         description: Invalid input
  */
 router.post("/", createCharger);
-/**
- * @swagger
- * /api/v1/public-chargers:
- *   get:
- *     summary: Get all community chargers
- *     tags: [Community Chargers]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of community chargers
- *       401:
- *         description: Unauthorized
- */
-router.get("/", getAllChargers);
 
 /**
  * @swagger

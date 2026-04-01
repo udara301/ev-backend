@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import { pool } from "../config/db.js";
 import dotenv from "dotenv";
 import { sendResetEmail } from "../utils/mailer.js";
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -64,6 +66,50 @@ export const signupCustomer = async (req, res) => {
   } finally {
     connection.release();
   }
+};
+
+// Google OAuth login
+export const googleLogin = async (req, res) => {
+    const { idToken } = req.body; // Token sent from frontend after Google Sign-In
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const { sub: googleId, email, name } = payload;
+
+        // 1. Check if the user exists
+        let [user] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+
+        if (user.length === 0) {
+            // 2. If the user is new, register them as a CUSTOMER
+            const [result] = await pool.query(
+                "INSERT INTO users (name, email, google_id, role) VALUES (?, ?, ?, 'CUSTOMER')",
+                [name, email, googleId]
+            );
+            
+            // Add details to the Customer table (same logic as before)
+            await pool.query("INSERT INTO customers (user_id) VALUES (?)", [result.insertId]);
+            await pool.query("INSERT INTO wallets (customer_id, balance) VALUES (?, 0)", [result.insertId]);
+            
+            user = [{ id: result.insertId, email, role: 'CUSTOMER' }];
+        }
+
+        // 3. Generate and send JWT
+        const token = jwt.sign(
+            { id: user[0].id, email: user[0].email, role: user[0].role },
+            process.env.JWT_SECRET,
+            { expiresIn: "2h" }
+        );
+
+        res.json({ message: "Google login successful", token, role: user[0].role });
+
+    } catch (error) {
+      console.error("Google login error:", error);
+        res.status(400).json({ message: "Google authentication failed" });
+    }
 };
 
 

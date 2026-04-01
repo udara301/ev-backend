@@ -7,6 +7,7 @@ import {
   forgotPassword,
   resetPassword,
   getProfile,
+  googleLogin,
 } from "../controllers/authController.js";
 import { verifyToken, authorize } from "../middleware/authMiddleware.js";
 
@@ -91,6 +92,9 @@ router.post("/signup", verifyToken, authorize(["COMPANY_ADMIN"]), signup);
  *         description: Invalid input
  */
 router.post("/customer-signup", signupCustomer); // Separate endpoint for customer signup (public)
+
+
+router.post("/google-login/customer", googleLogin); // Google OAuth login for customers
 
 /**
  * @swagger

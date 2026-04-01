@@ -1,11 +1,11 @@
 import express from "express";
-import { verifyToken } from "../middleware/authMiddleware.js";
+import { verifyToken, authorize } from "../middleware/authMiddleware.js";
 
 import {
     searchAvailableVehicles,
     placeBooking,
-    createBooking,
     getMyBookings,
+    getAllBookingsForAdmin,
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -64,14 +64,14 @@ const router = express.Router();
  *                   range_per_charge:
  *                     type: integer
  *                     example: 270
- *                  deposit:
- *                    type: number
- *                    format: float
- *                    example: 5000
- *                  top_speed:
- *                   type: integer
- *                    example: 150
- *                  base_price_per_day:
+ *                   deposit:
+ *                     type: number
+ *                     format: float
+ *                     example: 5000
+ *                   top_speed:
+ *                     type: integer
+ *                     example: 150
+ *                   base_price_per_day:
  *                     type: number
  *                     format: float
  *                     example: 12000
@@ -146,63 +146,6 @@ router.post("/place", verifyToken, placeBooking);
 
 /**
  * @swagger
- * /api/v1/bookings/create:
- *   post:
- *     summary: Create a new booking with automatic price calculation
- *     tags: [Bookings]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - vehicle_id
- *               - pickup_date
- *               - dropoff_date
- *             properties:
- *               vehicle_id:
- *                 type: integer
- *                 example: 5
- *               pickup_date:
- *                 type: string
- *                 format: date
- *                 example: 2026-04-01
- *               dropoff_date:
- *                 type: string
- *                 format: date
- *                 example: 2026-04-05
- *     responses:
- *       201:
- *         description: Booking created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Booking successful
- *                 bookingId:
- *                   type: integer
- *                   example: 15
- *                 total_price:
- *                   type: number
- *                   format: float
- *                   example: 48000
- *       400:
- *         description: Vehicle already booked for selected dates
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
- */
-router.post("/create", verifyToken, createBooking);
-
-/**
- * @swagger
  * /api/v1/bookings/my-bookings:
  *   get:
  *     summary: Get all bookings for the authenticated user
@@ -258,5 +201,51 @@ router.post("/create", verifyToken, createBooking);
  *         description: Server error
  */
 router.get("/my-bookings", verifyToken, getMyBookings);
+
+/**
+ * @swagger
+ * /api/v1/bookings/admin/all:
+ *   get:
+ *     summary: Get all bookings (admin only)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   booking_id:
+ *                     type: integer
+ *                   user_id:
+ *                     type: integer
+ *                   vehicle_id:
+ *                     type: integer
+ *                   booking_status:
+ *                     type: string
+ *                   total_price:
+ *                     type: number
+ *                     format: float
+ *                   customer_name:
+ *                     type: string
+ *                   customer_email:
+ *                     type: string
+ *                   model_name:
+ *                     type: string
+ *                   plate_number:
+ *                     type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Server error
+ */
+router.get("/admin/all", verifyToken, authorize(["COMPANY_ADMIN"]), getAllBookingsForAdmin);
 
 export default router;

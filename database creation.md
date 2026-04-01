@@ -21,6 +21,10 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE users 
+ADD COLUMN google_id VARCHAR(255) UNIQUE DEFAULT NULL,
+MODIFY COLUMN password_hash VARCHAR(255) NULL;
+
 -- ========================
 -- Sample company admin
 -- ========================
@@ -256,7 +260,9 @@ CREATE TABLE customers (
     user_id BIGINT, 
     vehicle_id INT,
     pickup_date DATETIME NOT NULL,
+    pickup_time TIME NOT NULL,
     dropoff_date DATETIME NOT NULL,
+    dropoff_time TIME NOT NULL,
     total_price DECIMAL(10, 2) NOT NULL,
     booking_status ENUM('pending', 'confirmed', 'ongoing', 'completed', 'cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

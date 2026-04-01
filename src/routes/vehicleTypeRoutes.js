@@ -334,7 +334,8 @@ router.get("/:id", getModelById);
  *       500:
  *         description: Server error
  */
-router.put("/:id", updateModel);
+
+router.put("/:id", upload.single('image'), updateModel);
 
 /**
  * @swagger

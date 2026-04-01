@@ -1,7 +1,7 @@
 import { pool } from "../config/db.js";
 
 
-// කැටගරි සහ දිනය අනුව වාහන සර්ච් කිරීම
+// Search for available vehicles based on category and date range
 export const searchAvailableVehicles = async (req, res) => {
     try {
         const { category, pickup_date, dropoff_date } = req.query;
@@ -40,15 +40,16 @@ export const searchAvailableVehicles = async (req, res) => {
 };
 
 
+// Customer: place a booking
 export const placeBooking = async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const { vehicle_id, pickup_date, dropoff_date, total_price } = req.body;
+        const { vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price } = req.body;
         const user_id = req.user.id;
 
         await connection.beginTransaction();
 
-        // 1. Double check: අවසන් මොහොතේ තව කෙනෙක් බුක් කරලද බලන්න
+        // 1. Double check: Check if the vehicle is already booked for the selected dates
         const [isBooked] = await connection.query(
             `SELECT * FROM bookings 
              WHERE vehicle_id = ? AND booking_status != 'cancelled'
@@ -61,10 +62,10 @@ export const placeBooking = async (req, res) => {
             return res.status(400).json({ message: "Sorry, the vehicle is already booked for the selected dates." });
         }
 
-        // 2. බුකින් එක සේව් කිරීම
+        // 2. Save the booking
         const [booking] = await connection.query(
-            "INSERT INTO bookings (user_id, vehicle_id, pickup_date, dropoff_date, total_price, booking_status) VALUES (?, ?, ?, ?, ?, 'pending')",
-            [user_id, vehicle_id, pickup_date, dropoff_date, total_price]
+            "INSERT INTO bookings (user_id, vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')",
+            [user_id, vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price]
         );
 
         await connection.commit();
@@ -79,67 +80,8 @@ export const placeBooking = async (req, res) => {
 };
 
 
-// Old code for creating a booking and getting user's bookings
-export const createBooking = async (req, res) => {
-    const connection = await pool.getConnection();
-    try {
-        const { vehicle_id, pickup_date, dropoff_date } = req.body;
-        const user_id = req.user.id; // ලොග් වී සිටින යූසර්
 
-        await connection.beginTransaction();
-
-        // 1. වාහනය එම දිනවලට "Available" ද කියා බැලීම (Date Overlap Logic)
-        const [overlap] = await connection.query(
-            `SELECT * FROM bookings 
-             WHERE vehicle_id = ? 
-             AND booking_status NOT IN ('cancelled')
-             AND (
-                (pickup_date <= ? AND dropoff_date >= ?) -- නව බුකින් එක මැදට පරණ එකක් ඒම
-                OR (pickup_date <= ? AND dropoff_date >= ?) -- පරණ එක මැදට නව එක ඒම
-             )`,
-            [vehicle_id, dropoff_date, pickup_date, pickup_date, pickup_date]
-        );
-
-        if (overlap.length > 0) {
-            await connection.rollback();
-            return res.status(400).json({ message: "මෙම දිනයන් සඳහා වාහනය දැනටමත් වෙන්කර ඇත (Already Booked)" });
-        }
-
-        // 2. මිල ගණනය කිරීම
-        const [vehicle] = await connection.query(
-            "SELECT m.base_price_per_day FROM vehicles v JOIN vehicle_models m ON v.model_id = m.model_id WHERE v.vehicle_id = ?",
-            [vehicle_id]
-        );
-
-        const date1 = new Date(pickup_date);
-        const date2 = new Date(dropoff_date);
-        const diffTime = Math.abs(date2 - date1);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // අවම දින 1යි
-        const total_price = diffDays * vehicle[0].base_price_per_day;
-
-        // 3. බුකින් එක ඇතුළත් කිරීම
-        const [bookingResult] = await connection.query(
-            "INSERT INTO bookings (user_id, vehicle_id, pickup_date, dropoff_date, total_price) VALUES (?, ?, ?, ?, ?)",
-            [user_id, vehicle_id, pickup_date, dropoff_date, total_price]
-        );
-
-        await connection.commit();
-        res.status(201).json({
-            message: "Booking successful",
-            bookingId: bookingResult.insertId,
-            total_price
-        });
-
-    } catch (err) {
-        await connection.rollback();
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
-    } finally {
-        connection.release();
-    }
-};
-
-// යූසර්ට තමන්ගේ බුකින් විස්තර බැලීම
+// Customer: get their own bookings
 export const getMyBookings = async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -152,6 +94,25 @@ export const getMyBookings = async (req, res) => {
         );
         res.json(rows);
     } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+// Admin: get all bookings
+export const getAllBookingsForAdmin = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT b.*, u.name AS customer_name, u.email AS customer_email, m.model_name, v.plate_number
+             FROM bookings b
+             JOIN users u ON b.user_id = u.id
+             JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+             JOIN vehicle_models m ON v.model_id = m.model_id
+             ORDER BY b.created_at DESC`
+        );
+
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Server error" });
     }
 };

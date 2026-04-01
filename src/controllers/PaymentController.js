@@ -1,11 +1,14 @@
 import { pool } from "../config/db.js";
+import crypto from 'crypto';
+import dotenv from "dotenv";
+dotenv.config();
 
-// පේමන්ට් එකක් ආරම්භ කිරීම (පේමන්ට් ගේට්වේ එකට යන්න කලින්)
+// initiate payment (called from Angular when user clicks "Confirm & Pay")
 export const initiatePayment = async (req, res) => {
     try {
         const { booking_id, amount, method } = req.body;
 
-        // මුලින්ම පේමන්ට් එක 'pending' විදිහට සේව් කරනවා
+        // Save the payment with status "pending"
         const [result] = await pool.query(
             "INSERT INTO payments (booking_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'pending')",
             [booking_id, amount, method]
@@ -17,7 +20,7 @@ export const initiatePayment = async (req, res) => {
     }
 };
 
-// පේමන්ට් එක සාර්ථක වුණාම (Web-hook/Notify logic)
+// When payment is Successful (Web-hook/Notify logic) not implemented yet, but this is where you would handle the payment gateway's response and update the database accordingly
 export const handlePaymentNotify = async (req, res) => {
     try {
         const { order_id, status_code, md5sig } = req.body; 
@@ -66,3 +69,35 @@ export const handlePaymentNotify = async (req, res) => {
 //     <input type="hidden" name="amount" [value]="totalAmount">
 //     <input type="submit" value="Buy Now">   
 // </form>
+
+// 2. Hash Generation Logic (Node.js Backend)
+export const generatePaymentHash = (req, res) => {
+    try {
+        const { order_id, amount, currency } = req.body; // currency එකත් body එකෙන් ගන්න
+        const merchant_id = process.env.PAYHERE_MERCHANT_ID;
+        const merchant_secret = process.env.PAYHERE_MERCHANT_SECRET; 
+
+        console.log("Generating hash with:", { merchant_id, order_id, amount, currency });
+        console.log("Merchant Secret (before hashing):", merchant_secret);
+        
+
+        // 1. uppercase MD5 hash 
+        const hashedSecret = crypto.createHash('md5')
+            .update(merchant_secret)
+            .digest('hex')
+            .toUpperCase();
+
+        const amountFormatted = parseFloat(amount).toFixed(2);
+
+        // 3. Create the main string for hashing
+        const mainString = merchant_id + order_id + amountFormatted + currency + hashedSecret;
+        console.log("Main String for Hashing:", mainString); // Debugging
+        const hash = crypto.createHash('md5')
+            .update(mainString)
+            .digest('hex')
+            .toUpperCase();
+        res.json({ hash });
+    } catch (err) {
+        res.status(500).json({ message: "Hash generation error" });
+    }
+};
