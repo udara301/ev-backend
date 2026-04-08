@@ -6,6 +6,7 @@ import {
     placeBooking,
     getMyBookings,
     getAllBookingsForAdmin,
+    updateBookingStatus,
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -247,5 +248,49 @@ router.get("/my-bookings", verifyToken, getMyBookings);
  *         description: Server error
  */
 router.get("/admin/all", verifyToken, authorize(["COMPANY_ADMIN"]), getAllBookingsForAdmin);
+
+/**
+ * @swagger
+ * /api/v1/bookings/admin/{id}/status:
+ *   patch:
+ *     summary: Update booking status (admin only)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - booking_status
+ *             properties:
+ *               booking_status:
+ *                 type: string
+ *                 enum: [pending, accepted, confirmed, cancelled, completed]
+ *                 example: accepted
+ *     responses:
+ *       200:
+ *         description: Booking status updated
+ *       400:
+ *         description: Invalid status
+ *       404:
+ *         description: Booking not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Server error
+ */
+router.patch("/admin/:id/status", verifyToken, authorize(["COMPANY_ADMIN"]), updateBookingStatus);
 
 export default router;

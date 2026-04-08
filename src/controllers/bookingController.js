@@ -98,6 +98,33 @@ export const getMyBookings = async (req, res) => {
     }
 };
 
+// Admin: update booking status
+export const updateBookingStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { booking_status } = req.body;
+
+        const allowedStatuses = ['pending', 'confirmed', 'ongoing', 'completed', 'cancelled'];
+        if (!booking_status || !allowedStatuses.includes(booking_status)) {
+            return res.status(400).json({ message: `Invalid status. Allowed: ${allowedStatuses.join(', ')}` });
+        }
+
+        const [result] = await pool.query(
+            "UPDATE bookings SET booking_status = ? WHERE booking_id = ?",
+            [booking_status, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+
+        res.json({ message: "Booking status updated", booking_id: Number(id), booking_status });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 // Admin: get all bookings
 export const getAllBookingsForAdmin = async (req, res) => {
     try {
