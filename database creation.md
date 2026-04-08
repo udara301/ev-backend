@@ -221,6 +221,8 @@ CREATE TABLE customers (
   vehicle_model VARCHAR(100),
   vehicle_number VARCHAR(50),
   address TEXT,
+  nic VARCHAR(20),
+  passport_number VARCHAR(20),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

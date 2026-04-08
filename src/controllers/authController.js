@@ -50,7 +50,7 @@ export const signupCustomer = async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     const [userResult] = await connection.query(
-      "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'CUSTOMER')", 
+      "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'CUSTOMER')",
       [name, email, hash]
     );
 
@@ -70,46 +70,46 @@ export const signupCustomer = async (req, res) => {
 
 // Google OAuth login
 export const googleLogin = async (req, res) => {
-    const { idToken } = req.body; // Token sent from frontend after Google Sign-In
+  const { idToken } = req.body; // Token sent from frontend after Google Sign-In
 
-    try {
-        const ticket = await client.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        const { sub: googleId, email, name } = payload;
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name } = payload;
 
-        // 1. Check if the user exists
-        let [user] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    // 1. Check if the user exists
+    let [user] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
 
-        if (user.length === 0) {
-            // 2. If the user is new, register them as a CUSTOMER
-            const [result] = await pool.query(
-                "INSERT INTO users (name, email, google_id, role) VALUES (?, ?, ?, 'CUSTOMER')",
-                [name, email, googleId]
-            );
-            
-            // Add details to the Customer table (same logic as before)
-            await pool.query("INSERT INTO customers (user_id) VALUES (?)", [result.insertId]);
-            await pool.query("INSERT INTO wallets (customer_id, balance) VALUES (?, 0)", [result.insertId]);
-            
-            user = [{ id: result.insertId, email, role: 'CUSTOMER' }];
-        }
+    if (user.length === 0) {
+      // 2. If the user is new, register them as a CUSTOMER
+      const [result] = await pool.query(
+        "INSERT INTO users (name, email, google_id, role) VALUES (?, ?, ?, 'CUSTOMER')",
+        [name, email, googleId]
+      );
 
-        // 3. Generate and send JWT
-        const token = jwt.sign(
-            { id: user[0].id, email: user[0].email, role: user[0].role },
-            process.env.JWT_SECRET,
-            { expiresIn: "2h" }
-        );
+      // Add details to the Customer table (same logic as before)
+      await pool.query("INSERT INTO customers (user_id) VALUES (?)", [result.insertId]);
+      await pool.query("INSERT INTO wallets (customer_id, balance) VALUES (?, 0)", [result.insertId]);
 
-        res.json({ message: "Google login successful", token, role: user[0].role });
-
-    } catch (error) {
-      console.error("Google login error:", error);
-        res.status(400).json({ message: "Google authentication failed" });
+      user = [{ id: result.insertId, email, role: 'CUSTOMER' }];
     }
+
+    // 3. Generate and send JWT
+    const token = jwt.sign(
+      { id: user[0].id, email: user[0].email, role: user[0].role },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    res.json({ message: "Google login successful", token, role: user[0].role });
+
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(400).json({ message: "Google authentication failed" });
+  }
 };
 
 
@@ -214,12 +214,61 @@ export const resetPassword = async (req, res) => {
   }
 };
 
+// Update customer profile (protected)
+export const updateCustomerProfile = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const userId = req.user.id;
+
+
+
+    const { name, phone_number, vehicle_model, vehicle_number, address, nic, passport_number, is_local } = req.body;
+
+    await connection.beginTransaction();
+
+    // Update users table
+    if (name) {
+      await connection.query("UPDATE users SET name = ? WHERE id = ?", [name, userId]);
+    }
+
+    if (req.user.role === "CUSTOMER") {
+      // Update customers table
+      await connection.query(
+        `UPDATE customers SET phone_number = ?, vehicle_model = ?, vehicle_number = ?, address = ?, nic = ?, passport_number = ?, is_local = ? WHERE user_id = ?`,
+        [phone_number, vehicle_model, vehicle_number, address, nic, passport_number, is_local, userId]
+      );
+    }
+
+    await connection.commit();
+    res.json({ message: "Profile updated successfully" });
+  } catch (err) {
+    await connection.rollback();
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  } finally {
+    connection.release();
+  }
+};
+
 // Get account details (protected)
 export const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const [rows] = await pool.query("SELECT id, name, email, role, created_at FROM users WHERE id=?", [userId]);
-    res.json(rows[0]);
+
+    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+
+    const user = rows[0];
+
+    if (user.role === "CUSTOMER") {
+      const [customerRows] = await pool.query(
+        "SELECT phone_number, vehicle_model, vehicle_number, address, nic, passport_number, is_local FROM customers WHERE user_id = ?",
+        [userId]
+      );
+      return res.json({ ...user, ...(customerRows[0] || {}) });
+    }
+
+    res.json(user);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

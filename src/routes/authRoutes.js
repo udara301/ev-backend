@@ -7,6 +7,7 @@ import {
   forgotPassword,
   resetPassword,
   getProfile,
+  updateCustomerProfile,
   googleLogin,
 } from "../controllers/authController.js";
 import { verifyToken, authorize } from "../middleware/authMiddleware.js";
@@ -225,5 +226,44 @@ router.post("/reset-password", resetPassword);
  *         description: Unauthorized
  */
 router.get("/me", verifyToken, getProfile);
+
+/**
+ * @swagger
+ * /api/v1/auth/me:
+ *   put:
+ *     summary: Update customer profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone_number:
+ *                 type: string
+ *               vehicle_model:
+ *                 type: string
+ *               vehicle_number:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               nic:
+ *                 type: string
+ *               passport_number:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.put("/me", verifyToken, updateCustomerProfile);
 
 export default router;
