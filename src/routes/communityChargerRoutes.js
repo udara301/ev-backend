@@ -53,10 +53,19 @@ router.use(verifyToken);
  *                 type: number
  *               longitude:
  *                 type: number
- *               connector_type:
+ *               charger_network:
  *                 type: string
  *               image_url:
  *                 type: string
+ *               connectors:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     connector_type:
+ *                       type: string
+ *                     charger_capacity:
+ *                       type: string
  *     responses:
  *       201:
  *         description: Community charger added successfully
@@ -116,10 +125,19 @@ router.get("/:id", getChargerById);
  *                 type: number
  *               longitude:
  *                 type: number
- *               connector_type:
+ *               charger_network:
  *                 type: string
  *               image_url:
  *                 type: string
+ *               connectors:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     connector_type:
+ *                       type: string
+ *                     charger_capacity:
+ *                       type: string
  *     responses:
  *       200:
  *         description: Charger updated successfully

@@ -194,12 +194,20 @@ CREATE TABLE community_chargers (
     place_name VARCHAR(255) NOT NULL,      -- location name(eg: Liberty Plaza Parking)
     description TEXT,                       -- description (eg: Near Gate 2)
     latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    connector_type VARCHAR(100),            -- Type 2, CCS2 
+    longitude DECIMAL(11, 8) NOT NULL,      
+    charger_network VARCHAR(255),
     is_verified BOOLEAN DEFAULT FALSE,     --  whether confirmed by an admin
     image_url VARCHAR(500) NULL,           -- sample photo 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE community_charger_connectors (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    charger_id BIGINT NOT NULL,
+    connector_type VARCHAR(100) NOT NULL,
+    charger_capacity VARCHAR(50),
+    FOREIGN KEY (charger_id) REFERENCES community_chargers(id) ON DELETE CASCADE
 );
 
 -- ========================
