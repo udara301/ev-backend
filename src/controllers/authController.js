@@ -124,6 +124,14 @@ export const login = async (req, res) => {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(400).json({ message: "Invalid email or password" });
 
+    // Activate agent on first login
+    if (user.role === "AGENT_ADMIN") {
+      await pool.query(
+        "UPDATE agents SET status = 'ACTIVE' WHERE user_id = ? AND status = 'NEW'",
+        [user.id]
+      );
+    }
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,

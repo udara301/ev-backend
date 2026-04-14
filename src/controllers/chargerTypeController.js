@@ -15,6 +15,7 @@ export const addChargerType = async (req, res) => {
             number_of_ports,
             current_type,
             description,
+            connector_data,
         } = req.body;
 
         // Check if model already exists
@@ -27,14 +28,15 @@ export const addChargerType = async (req, res) => {
 
         await pool.query(
             `INSERT INTO charger_types 
-      (model, input_voltage, number_of_ports, current_type, description) 
-      VALUES (?, ?, ?, ?, ?)`,
+      (model, input_voltage, number_of_ports, current_type, description, connector_data) 
+      VALUES (?, ?, ?, ?, ?, ?)`,
             [
                 model,
                 input_voltage,
                 number_of_ports,
                 current_type,
                 description,
+                JSON.stringify(connector_data),
             ]
         );
 
@@ -114,12 +116,12 @@ export const updateChargerType = async (req, res) => {
             model,
             input_voltage,
             current_type,
-            description,
+            description
         } = req.body;
 
         const [result] = await pool.query(
             `UPDATE charger_types 
-       SET model=?, input_voltage=?, current_type=?, description=? 
+       SET model=?, input_voltage=?, current_type=?, description=?
        WHERE id=?`,
             [
                 model,
@@ -160,6 +162,9 @@ export const deleteChargerType = async (req, res) => {
 
         res.json({ message: "Charger type deleted successfully" });
     } catch (err) {
+        if (err.code === "ER_ROW_IS_REFERENCED_2") {
+            return res.status(409).json({ message: "Cannot delete charger type. It is currently assigned to one or more chargers." });
+        }
         console.error(err);
         res.status(500).json({ message: "Server error" });
     }

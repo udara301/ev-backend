@@ -24,11 +24,23 @@ export const createCharger = async (req, res) => {
       return res.status(400).json({ message: "Serial number already exists" });
     }
 
+    // Check if ocpp_id (name) already exists
+    if (name) {
+      const [ocppExists] = await pool.query(
+        "SELECT id FROM chargers WHERE ocpp_id = ?",
+        [name]
+      );
+      if (ocppExists.length > 0) {
+        return res.status(400).json({ message: "OCPP ID already exists" });
+      }
+    }
+
     const [typeRows] = await pool.query(
-      "SELECT number_of_ports FROM charger_types WHERE id = ?",
+      "SELECT number_of_ports, connector_data FROM charger_types WHERE id = ?",
       [charger_type_id]
     );
-    const portCount = typeRows[0]?.number_of_ports || 1;
+    const chargerType = typeRows[0];
+    const portCount = chargerType?.number_of_ports || 1;
 
     const [result] = await pool.query(
       `INSERT INTO chargers (ocpp_id, serial_number, checksum, charger_type_id)
@@ -36,11 +48,32 @@ export const createCharger = async (req, res) => {
       [name || null, serial_number, checksum, charger_type_id]
     );
 
+    // Parse connector_data from charger type if available
+    let connectorData = [];
+    if (chargerType?.connector_data) {
+      try {
+        connectorData = typeof chargerType.connector_data === "string"
+          ? JSON.parse(chargerType.connector_data)
+          : chargerType.connector_data;
+      } catch (e) {
+        connectorData = [];
+      }
+    }
+
     for (let i = 1; i <= portCount; i++) {
-      await pool.query(
-        "INSERT INTO connectors (charger_id, connector_id, status) VALUES (?, ?, 'AVAILABLE')",
-        [result.insertId, i]
-      );
+      const cd = connectorData[i - 1];
+      if (cd) {
+        await pool.query(
+          `INSERT INTO connectors (charger_id, connector_id, status, connector_type, max_power_kw, output_voltage, amperage)
+           VALUES (?, ?, 'AVAILABLE', ?, ?, ?, ?)`,
+          [result.insertId, i, cd.connector_type || null, cd.power_kw || null, cd.output_voltage || null, cd.amperage || null]
+        );
+      } else {
+        await pool.query(
+          "INSERT INTO connectors (charger_id, connector_id, status) VALUES (?, ?, 'AVAILABLE')",
+          [result.insertId, i]
+        );
+      }
     }
     
     res.json({
@@ -76,6 +109,7 @@ export const getChargersAdmin = async (req, res) => {
         ct.input_voltage,
         ct.current_type,
         ct.description,
+        ct.connector_data,
         ct.created_at AS type_created_at,
 
         -- Agent Details (Optional)
@@ -83,11 +117,17 @@ export const getChargersAdmin = async (req, res) => {
         a.contact_person AS agent_contact_person,
         a.phone_number AS agent_phone,
         a.city AS agent_city,
-        a.status AS agent_status
+        a.status AS agent_status,
+
+        -- User Details (Optional)
+        u.id AS user_id,
+        u.name AS agent_name,
+        u.email AS agent_email
 
       FROM chargers c
       JOIN charger_types ct ON c.charger_type_id = ct.id
       LEFT JOIN agents a ON c.agent_id = a.id
+      LEFT JOIN users u ON c.user_id = u.id
       ORDER BY c.id DESC
     `);
 
@@ -106,12 +146,15 @@ export const getChargersAdmin = async (req, res) => {
         input_voltage: row.input_voltage,
         current_type: row.current_type,
         description: row.description,
+        connector_data: row.connector_data ? JSON.parse(row.connector_data) : [],
         created_at: row.type_created_at
       },
 
       agent: row.agent_id
         ? {
           id: row.agent_id,
+          name: row.agent_name,
+          email: row.agent_email,
           contact_person: row.agent_contact_person,
           phone_number: row.agent_phone,
           city: row.agent_city,
@@ -158,6 +201,17 @@ export const updateCharger = async (req, res) => {
     );
     if (duplicate.length > 0) {
       return res.status(400).json({ message: "Serial number already exists" });
+    }
+
+    // Check if ocpp_id (name) is used by another charger
+    if (name) {
+      const [ocppDuplicate] = await pool.query(
+        "SELECT id FROM chargers WHERE ocpp_id = ? AND id != ?",
+        [name, chargerId]
+      );
+      if (ocppDuplicate.length > 0) {
+        return res.status(400).json({ message: "OCPP ID already exists" });
+      }
     }
 
     // Update charger (checksum is not updated)
@@ -318,10 +372,16 @@ export const getChargersForAgent = async (req, res) => {
       SELECT 
         c.*,
         ct.model as charger_type_model,
-        ct.connector_type,
-        ct.max_power_kw,
         ct.current_type,
-        ch.id as active_charge_id,
+        con.id as connector_db_id,
+        con.connector_id,
+        con.status as connector_status,
+        con.connector_type,
+        con.max_power_kw,
+        con.output_voltage,
+        con.amperage,
+        con.active_charge_id,
+        ch.id as charge_id,
         ch.start_time as charge_start_time,
         ch.end_time as charge_end_time,
         ch.meter_start,
@@ -337,12 +397,70 @@ export const getChargersForAgent = async (req, res) => {
         u.email as customer_email
       FROM chargers c
       LEFT JOIN charger_types ct ON c.charger_type_id = ct.id
-      LEFT JOIN charges ch ON c.active_charge_id = ch.id
+      LEFT JOIN connectors con ON con.charger_id = c.id
+      LEFT JOIN charges ch ON con.active_charge_id = ch.id
       LEFT JOIN users u ON ch.customer_id = u.id
       WHERE c.agent_id = ?
-      ORDER BY c.created_at DESC
+      ORDER BY c.created_at DESC, con.connector_id ASC
     `, [agentId]);
-    res.json(rows);
+
+    // Group rows by charger, nesting connectors as an array
+    const chargerMap = new Map();
+    for (const row of rows) {
+      if (!chargerMap.has(row.id)) {
+        chargerMap.set(row.id, {
+          id: row.id,
+          ocpp_id: row.ocpp_id,
+          serial_number: row.serial_number,
+          checksum: row.checksum,
+          charger_type_id: row.charger_type_id,
+          agent_id: row.agent_id,
+          user_id: row.user_id,
+          location: row.location,
+          street_name: row.street_name,
+          city: row.city,
+          price_per_kwh: row.price_per_kwh,
+          is_24hours_open: row.is_24hours_open,
+          opening_time: row.opening_time,
+          closing_time: row.closing_time,
+          notes: row.notes,
+          created_at: row.created_at,
+          charger_type_model: row.charger_type_model,
+          current_type: row.current_type,
+          connectors: [],
+        });
+      }
+
+      if (row.connector_db_id) {
+        chargerMap.get(row.id).connectors.push({
+          id: row.connector_db_id,
+          connector_id: row.connector_id,
+          status: row.connector_status,
+          connector_type: row.connector_type,
+          max_power_kw: row.max_power_kw,
+          output_voltage: row.output_voltage,
+          amperage: row.amperage,
+          active_charge: row.charge_id ? {
+            id: row.charge_id,
+            start_time: row.charge_start_time,
+            end_time: row.charge_end_time,
+            meter_start: row.meter_start,
+            meter_stop: row.meter_stop,
+            amount: row.charge_amount,
+            status: row.charge_status,
+            vehicle_number: row.vehicle_number,
+            ocpp_transaction_id: row.ocpp_transaction_id,
+            note: row.charge_note,
+            duration_hours: row.charge_duration_hours,
+            energy_used_kwh: row.energy_used_kwh,
+            customer_name: row.customer_name,
+            customer_email: row.customer_email,
+          } : null,
+        });
+      }
+    }
+
+    res.json(Array.from(chargerMap.values()));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -374,7 +492,7 @@ export const editChargerAgent = async (req, res) => {
     // Step 2: Extract data from request
     const {
       id,                // Charger ID
-      name,
+      ocpp_id,
       location,
       street_name,
       city,
@@ -406,7 +524,6 @@ export const editChargerAgent = async (req, res) => {
       `
       UPDATE chargers
       SET
-        ocpp_id = ?,
         location = ?,
         street_name = ?,
         city = ?,
@@ -414,12 +531,10 @@ export const editChargerAgent = async (req, res) => {
         is_24hours_open = ?,
         opening_time = ?,
         closing_time = ?,
-        notes = ?,
-        updated_at = NOW()
+        notes = ?
       WHERE id = ?
       `,
       [
-        name,
         location,
         street_name,
         city,
@@ -542,8 +657,6 @@ export const getChargersPublic = async (req, res) => {
         ct.model AS type_model,
         ct.input_voltage,
         ct.output_voltage,
-        ct.connector_type,
-        ct.max_power_kw,
         ct.amperage,
         ct.current_type,
         ct.description,

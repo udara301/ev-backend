@@ -68,7 +68,8 @@ CREATE TABLE charger_types (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     model VARCHAR(100) NOT NULL,              -- e.g., "AC Type 2", "DC Fast Charger"
     input_voltage VARCHAR(100),             
-    number_of_ports  INT DEFAULT 1,              
+    number_of_ports  INT DEFAULT 1,
+    connector_data JSON,              
     current_type ENUM('AC', 'DC') DEFAULT 'AC',
     description TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -108,7 +109,7 @@ CREATE TABLE chargers (
     price_per_kwh DECIMAL(10,2) NULL,            -- Charging price per kWh
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT
 );
 
