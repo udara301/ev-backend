@@ -65,12 +65,12 @@ export const createCharger = async (req, res) => {
       if (cd) {
         await pool.query(
           `INSERT INTO connectors (charger_id, connector_id, status, connector_type, max_power_kw, output_voltage, amperage)
-           VALUES (?, ?, 'AVAILABLE', ?, ?, ?, ?)`,
+           VALUES (?, ?, 'UNAVAILABLE', ?, ?, ?, ?)`,
           [result.insertId, i, cd.connector_type || null, cd.power_kw || null, cd.output_voltage || null, cd.amperage || null]
         );
       } else {
         await pool.query(
-          "INSERT INTO connectors (charger_id, connector_id, status) VALUES (?, ?, 'AVAILABLE')",
+          "INSERT INTO connectors (charger_id, connector_id, status) VALUES (?, ?, 'UNAVAILABLE')",
           [result.insertId, i]
         );
       }
@@ -102,6 +102,7 @@ export const getChargersAdmin = async (req, res) => {
         c.checksum,
         c.ocpp_id,
         c.location,
+        c.status,
         c.created_at AS charger_created_at,
         -- Charger Type Details
         ct.id AS type_id,
@@ -139,6 +140,7 @@ export const getChargersAdmin = async (req, res) => {
       name: row.ocpp_id,
       location: row.location,
       created_at: row.charger_created_at,
+      status: row.status,
 
       charger_type: {
         id: row.type_id,
@@ -428,6 +430,7 @@ export const getChargersForAgent = async (req, res) => {
           charger_type_model: row.charger_type_model,
           current_type: row.current_type,
           connectors: [],
+          status: row.status,
         });
       }
 

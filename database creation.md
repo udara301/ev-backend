@@ -103,6 +103,7 @@ CREATE TABLE chargers (
     is_24hours_open BOOLEAN DEFAULT FALSE,       -- Whether charger operates 24/7
     opening_time TIME NULL,                      -- Opening time (if not 24 hours)
     closing_time TIME NULL,                      -- Closing time (if not 24 hours)
+    status ENUM('AVAILABLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'UNAVAILABLE',
     notes TEXT NULL,                             -- Optional notes about charger
     amenities VARCHAR(255) NULL,.
     custom_parameters JSON NULL,                 -- JSON for flexible config params
@@ -121,7 +122,7 @@ CREATE TABLE connectors (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     charger_id BIGINT NOT NULL, -- Physical charger ID (e.g., CP001)
     connector_id INT,        -- OCPP Connector ID (1, 2, 3...)
-    status ENUM('IDLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'IDLE',
+    status ENUM('AVAILABLE', 'PENDING','PAUSED', 'CHARGING','ERROR', 'UNAVAILABLE', 'FAULTED', 'FINISHING') DEFAULT 'UNAVAILABLE',
     output_voltage VARCHAR(100),             
     connector_type VARCHAR(100) NULL,        -- e.g., "Type2", "CCS2", "CHAdeMO"
     max_power_kw DECIMAL(10,2) NULL,         -- e.g., 22.0 or 50.0

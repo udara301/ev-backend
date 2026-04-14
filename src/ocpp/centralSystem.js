@@ -15,7 +15,7 @@ console.log(`🚀 OCPP Server running on ws://localhost:${PORT}`);
 wss.on("connection", (ws, req) => {
     const urlParts = req.url.split("/");
     const chargePointId = urlParts.pop();
-
+    
     console.log(`🔌 Charger connected: ${chargePointId}`);
 
     connectedChargers.set(chargePointId, ws);

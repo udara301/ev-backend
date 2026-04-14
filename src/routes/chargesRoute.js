@@ -10,7 +10,7 @@ router.use(verifyToken);
 
 /**
  * @swagger
- * /api/v1/charges/agent/{chargerId}/start:
+ * /api/v1/charges/agent/{chargerId}/{connectorId}/start:
  *   post:
  *     summary: Start charging session
  *     tags: [Charges]
@@ -22,6 +22,12 @@ router.use(verifyToken);
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: path
+ *         name: connectorId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: OCPP connector ID (1, 2, 3...)
  *     requestBody:
  *       required: false
  *       content:
@@ -42,11 +48,11 @@ router.use(verifyToken);
  *       404:
  *         description: Charger not found
  */
-router.post("/agent/:chargerId/start", startCharging);
+router.post("/agent/:chargerId/:connectorId/start", startCharging);
 
 /**
  * @swagger
- * /api/v1/charges/agent/{chargerId}/stop:
+ * /api/v1/charges/agent/{chargerId}/{connectorId}/stop:
  *   post:
  *     summary: Stop charging session
  *     tags: [Charges]
@@ -58,6 +64,12 @@ router.post("/agent/:chargerId/start", startCharging);
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: path
+ *         name: connectorId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: OCPP connector ID (1, 2, 3...)
  *     responses:
  *       200:
  *         description: Charging session stopped successfully
@@ -66,6 +78,6 @@ router.post("/agent/:chargerId/start", startCharging);
  *       404:
  *         description: Charger not found
  */
-router.post("/agent/:chargerId/stop", stopCharging);
+router.post("/agent/:chargerId/:connectorId/stop", stopCharging);
 
 export default router;

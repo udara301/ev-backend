@@ -30,7 +30,7 @@ export const startCharging = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        const { chargerId } = req.params;
+        const { chargerId, connectorId } = req.params;
         const { vehicle_number } = req.body;
 
         // 1️⃣ Get charger
@@ -41,43 +41,57 @@ export const startCharging = async (req, res) => {
         }
 
         const charger = chargers[0];
-        if (charger.status === "CHARGING") {
+
+        // 2️⃣ Get connector and check its status
+        const [connectors] = await connection.query(
+            "SELECT * FROM connectors WHERE charger_id = ? AND connector_id = ?",
+            [chargerId, connectorId]
+        );
+        if (connectors.length === 0) {
             await connection.rollback();
-            return res.status(400).json({ message: "Charger is already in use" });
+            return res.status(404).json({ message: "Connector not found" });
         }
 
+        const connector = connectors[0];
+        if (connector.status === "CHARGING" || connector.status === "PENDING") {
+            await connection.rollback();
+            return res.status(400).json({ message: "Connector is already in use" });
+        }
 
-        // 2️⃣ Create charge session
+        // 3️⃣ Create charge session
         const [result] = await connection.query(
-            `INSERT INTO charges (charger_id, start_time, status, vehicle_number)
-       VALUES (?, NOW(), 'PENDING', ?)`,
-            [chargerId, vehicle_number || null]
+            `INSERT INTO charges (charger_id, connector_id, customer_id, start_time, status, vehicle_number)
+       VALUES (?, ?, ?, NOW(), 'PENDING', ?)`,
+            [chargerId, connectorId, req.user.id, vehicle_number || null]
         );
 
         const chargeId = result.insertId;
 
-        // 3️⃣ Update charger status
+        // 4️⃣ Update connector status and active_charge_id
         await connection.query(
-            `UPDATE chargers 
+            `UPDATE connectors 
        SET status = 'PENDING',
         active_charge_id = ?
-       WHERE id = ?`,
-            [chargeId, chargerId]
+       WHERE charger_id = ? AND connector_id = ?`,
+            [chargeId, chargerId, connectorId]
         );
 
-        await connection.commit();
 
-        const started = sendRemoteStart(chargerId);
 
+        const started = sendRemoteStart(chargerId, "ADMIN", parseInt(connectorId));
+        console.log("Remote start command sent. OCPP response:", started);
         if (!started) {
             await connection.rollback();
-            return res.status(400).json({ message: "Charger is offline" });
+            return res.status(400).json({ message: "Connector is offline" });
         }
+
+        await connection.commit();
 
         res.status(201).json({
             message: "Charging command sent successfully",
             charge_id: result.insertId,
             charger_id: chargerId,
+            connector_id: parseInt(connectorId),
             start_time: new Date(),
             status: "PENDING",
         });
@@ -123,9 +137,9 @@ export const updateChargeWithOcppTx = async (chargeId, { ocpp_transaction_id, st
 }
 
 // =====================================================
-// Find the latest pending or charging session by charger ID
+// Find the latest pending or charging session by charger ID and connector ID
 // =====================================================
-export async function findPendingByCharger(chargerId) {
+export async function findPendingByCharger(chargerId, connectorId) {
     const connection = await pool.getConnection();
 
     try {
@@ -133,10 +147,11 @@ export async function findPendingByCharger(chargerId) {
             `SELECT * 
              FROM charges
              WHERE charger_id = ? 
+               AND connector_id = ?
                AND status IN ('PENDING','CHARGING')
              ORDER BY created_at DESC
              LIMIT 1`,
-            [chargerId]
+            [chargerId, connectorId]
         );
         return rows.length ? rows[0] : null;
     } finally {
@@ -153,11 +168,12 @@ export async function createCharge(payload) {
     try {
         const [result] = await connection.query(
             `INSERT INTO charges 
-            (charger_id, customer_id, start_time, end_time, amount, status, vehicle_number, 
+            (charger_id, connector_id, customer_id, start_time, end_time, amount, status, vehicle_number, 
              ocpp_transaction_id, meter_start, meter_stop, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
             [
                 payload.charger_id,
+                payload.connector_id || null,
                 payload.customer_id || null,
                 payload.start_time,
                 payload.end_time || null,
@@ -204,20 +220,20 @@ export async function updateMeterReadings(txId, meterStopValue) {
 }
 
 // =====================================================
-// update the active charge and charger status in charger table
+// update the active charge and connector status
 // =====================================================
 
-export async function setActiveChargeAndStatus(chargerId, chargeId, status, amount) {
+export async function setActiveChargeAndStatus(chargerId, connectorId, chargeId, status) {
     const connection = await pool.getConnection();
-    console.log("Updating charger:", chargerId, "with charge:", chargeId, "status:", status, "amount:", amount);
+    console.log("Updating connector:", connectorId, "of charger:", chargerId, "with charge:", chargeId, "status:", status);
     try {
 
-        // Update charger table
+        // Update connector table
         await connection.query(
-            `UPDATE chargers
+            `UPDATE connectors
              SET active_charge_id = ?, status = ?
-             WHERE id = ?`,
-            [chargeId || null, status, chargerId]
+             WHERE charger_id = ? AND connector_id = ?`,
+            [chargeId || null, status, chargerId, connectorId]
         );
 
         // Return updated charger
@@ -228,7 +244,7 @@ export async function setActiveChargeAndStatus(chargerId, chargeId, status, amou
         return rows[0];
     }
     catch (error) {
-        console.error("Error updating charger:", error);
+        console.error("Error updating connector:", error);
         throw error;
     } finally {
         connection.release();
@@ -247,20 +263,28 @@ export const stopCharging = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        const { chargerId } = req.params;
+        const { chargerId, connectorId } = req.params;
 
+        // 1️⃣ Get charger (need ocpp_id for sendRemoteStop)
+        const [chargers] = await connection.query("SELECT * FROM chargers WHERE id = ?", [chargerId]);
+        if (chargers.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: "Charger not found" });
+        }
 
-        // 1️⃣ Find active charge
+        const charger = chargers[0];
+
+        // 2️⃣ Find active charge on this connector
         const [charges] = await connection.query(
             `SELECT * FROM charges 
-       WHERE charger_id = ? AND status = 'CHARGING'
+       WHERE charger_id = ? AND connector_id = ? AND status = 'CHARGING'
        ORDER BY id DESC LIMIT 1`,
-            [chargerId]
+            [chargerId, connectorId]
         );
 
         if (charges.length === 0) {
             await connection.rollback();
-            return res.status(404).json({ message: "No active charging session found" });
+            return res.status(404).json({ message: "No active charging session found on this connector" });
         }
 
         const stopped = sendRemoteStop(chargerId, charges[0].ocpp_transaction_id);
@@ -270,9 +294,12 @@ export const stopCharging = async (req, res) => {
             return res.status(400).json({ message: "Charger is offline" });
         }
 
+        await connection.commit();
+
         res.status(200).json({
             message: "Charging stop command sent successfully",
             charge_id: charges[0].id,
+            connector_id: parseInt(connectorId),
             status: "COMPLETED",
         });
     } catch (error) {
