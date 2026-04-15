@@ -179,8 +179,10 @@ CREATE TABLE wallets (
 CREATE TABLE wallet_transactions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     wallet_id BIGINT NOT NULL,
-    charge_id BIGINT NULL, -- චාජ් එකකට කැපුණු සල්ලි නම්
+    charge_id BIGINT NULL, 
     amount DECIMAL(10,2) NOT NULL,
+    reference_id VARCHAR(255),
+    status ENUM('SUCCESS', 'FAILED', 'PENDING'),
     type ENUM('TOPUP', 'PAYMENT', 'REFUND') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,

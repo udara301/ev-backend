@@ -17,6 +17,7 @@ import vehicleRoutes from "./routes/vehicleRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import walletRoutes from "./routes/walletRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/v1/vehicles", vehicleRoutes);
 app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/wallet", walletRoutes);
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

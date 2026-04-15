@@ -1,4 +1,5 @@
 // src/ocpp/ocppHandlers.js
+import { pool } from "../config/db.js";
 import * as chargerService from "../services/charger.service.js";
 import * as chargeController from "../controllers/charges.controller.js";
 import { sendToUser } from "../websocket/frontendws.js";
@@ -40,7 +41,8 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
             console.log(`📡 ${chargePointId} connector ${statusConnectorId} status: ${chargerStatus}`);
             if (statusConnectorId && statusConnectorId > 0) {
                 // Update specific connector status
-                // await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
+                console.log(`💠💠💠Changing status of charger ${chargePointId} connector ${statusConnectorId} to ${chargerStatus}`);
+                await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
             }
             ws.send(JSON.stringify([3, uid, {}]));
             break;
@@ -111,6 +113,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
 
                 // Sending the status to frontend via websocket
                 if (startCharger.user_id) {
+                    console.log(`Sending charging_started event to user ${startCharger.user_id} for charger ${chargePointId}, connector ${connectorId}`);
                     sendToUser(startCharger.user_id, {
                         type: "charging_started",
                         chargerId: startCharger.id,
@@ -157,8 +160,11 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                     await chargeController.setActiveChargeAndStatus(charge.charger_id, charge.connector_id, null, "AVAILABLE");
                     
                     if (charge.customer_id && cost > 0) {
-                        await walletService.deductBalance(charge.customer_id, charge.id, cost);
-                        console.log(`💰 Deducted ${cost} from user ${charge.customer_id}'s wallet.`);
+                        const [stopUserRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
+                        if (stopUserRows[0]?.role === "CUSTOMER") {
+                            await walletService.deductBalance(charge.customer_id, charge.id, cost);
+                            console.log(`💰 Deducted ${cost} from user ${charge.customer_id}'s wallet.`);
+                        }
                     }
 
                     if (stopCharger && stopCharger.user_id) {
@@ -211,24 +217,31 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
 
                     // 2. Cost Calculation
                     const currentCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0);
+                    console.log(`Meter update for charger ${chargePointId}, connector ${meterConnectorId}: energy used = ${energyConsumedKwh} kWh, current cost = ${currentCost}`);
 
                     if (charge && charge.customer_id) {
-                        const currentBalance = await walletService.getBalance(charge.customer_id);
-                        const estimatedCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0);
+                        // Check if user is a customer (not agent) before wallet check
+                        const [userRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
+                        const userRole = userRows[0]?.role;
 
-                        if (currentBalance - estimatedCost <= 10) {
-                            console.warn(`⚠️ Insufficient balance for user ${charge.customer_id}. Sending Remote Stop.`);
+                        if (userRole === "CUSTOMER") {
+                            const currentBalance = await walletService.getBalance(charge.customer_id);
+                            const estimatedCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0);
 
-                            // 1. send remote stop command to charger
-                            sendRemoteStop(chargePointId, txId);
+                            if (currentBalance - estimatedCost <= 10) {
+                                console.warn(`⚠️ Insufficient balance for user ${charge.customer_id}. Sending Remote Stop.`);
 
-                            // 2. Send alert to user about insufficient balance
-                            sendToUser(charge.customer_id, {
-                                type: "insufficient_balance",
-                                message: "Charging stopped due to insufficient wallet balance. Please recharge your wallet.",
-                                currentBalance: currentBalance,
-                                estimatedCost: estimatedCost
-                            });
+                                // 1. send remote stop command to charger
+                                sendRemoteStop(chargePointId, txId);
+
+                                // 2. Send alert to user about insufficient balance
+                                sendToUser(charge.customer_id, {
+                                    type: "insufficient_balance",
+                                    message: "Charging stopped due to insufficient wallet balance. Please recharge your wallet.",
+                                    currentBalance: currentBalance,
+                                    estimatedCost: estimatedCost
+                                });
+                            }
                         }
                     }
 
@@ -248,12 +261,6 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                         timestamp: timestamp
                     });
                 }
-
-
-                // Wallet Balance Check
-                // TO BE IMPLEMENTED: Check user's wallet balance and send alert/stop charging if balance is low or negative.
-
-
             }
             ws.send(JSON.stringify([3, uid, {}])); // Accept without error
             break;
