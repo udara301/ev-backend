@@ -82,15 +82,14 @@ export const generatePaymentHash = (req, res) => {
         
 
         // 1. uppercase MD5 hash 
+        // 1. MD5 hash of merchant secret, uppercased
         const hashedSecret = crypto.createHash('md5')
             .update(merchant_secret)
             .digest('hex')
             .toUpperCase();
 
-        const amountFormatted = parseFloat(amount).toFixed(2);
-
-        // 3. Create the main string for hashing
-        const mainString = merchant_id + order_id + amountFormatted + currency + hashedSecret;
+        // 2. Create the main string for hashing (amount must match exactly what's sent to PayHere)
+        const mainString = merchant_id + order_id + amount + currency + hashedSecret;
         console.log("Main String for Hashing:", mainString); // Debugging
         const hash = crypto.createHash('md5')
             .update(mainString)
