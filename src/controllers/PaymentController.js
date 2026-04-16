@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import dotenv from "dotenv";
 dotenv.config();
 
+// PAYMENT CONTROLLER is for rental bookings payments, not wallet top-ups. Wallet top-up logic is in walletController.js.
+
 // initiate payment (called from Angular when user clicks "Confirm & Pay")
 export const initiatePayment = async (req, res) => {
     try {
@@ -24,6 +26,7 @@ export const initiatePayment = async (req, res) => {
 export const handlePaymentNotify = async (req, res) => {
     try {
         const { order_id, status_code, md5sig } = req.body; 
+        console.log("Payment notification received:", req.body); // Debugging log
         // PayHere වගේ එව්වොත් මේ විස්තර එවනවා
 
         if (status_code === "2") { // 2 කියන්නේ සාමාන්‍යයෙන් Success
