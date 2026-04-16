@@ -45,6 +45,8 @@ CREATE TABLE agents (
   phone_number VARCHAR(20),
   street_address VARCHAR(255),
   city VARCHAR(100),
+  commission_percentage DECIMAL(5,2) DEFAULT 80.00,
+  payable_balance DECIMAL(10,2) DEFAULT 0.00,
   status ENUM('NEW', 'ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -310,4 +312,14 @@ CREATE TABLE IF NOT EXISTS pickup_locations (
     location_id INT AUTO_INCREMENT PRIMARY KEY,
     location_name VARCHAR(100) NOT NULL,
     price INT
+);
+
+CREATE TABLE payouts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    agent_id BIGINT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status ENUM('PENDING', 'PAID') DEFAULT 'PENDING',
+    paid_at TIMESTAMP NULL,
+    receipt_url VARCHAR(500),
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
 );

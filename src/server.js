@@ -18,6 +18,7 @@ import locationRoutes from "./routes/locationRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
+import { startCancelStaleBookingsCron } from "./cron/cancelStaleBookings.js";
 
 dotenv.config();
 const app = express();
@@ -53,6 +54,9 @@ console.log(`Starting server on port ${PORT}...`);
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// ✅ Start cron jobs
+startCancelStaleBookingsCron();
 
 // ✅ Start WebSocket server ONCE
 startFrontendWSServer(8081);
