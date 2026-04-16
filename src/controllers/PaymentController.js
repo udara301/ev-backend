@@ -18,6 +18,7 @@ export const initiatePayment = async (req, res) => {
 
         res.json({ message: "Payment initiated", paymentId: result.insertId });
     } catch (err) {
+        console.log("Initiate payment error:", err);
         res.status(500).json({ message: "Server error" });
     }
 };
