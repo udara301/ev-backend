@@ -22,20 +22,27 @@ export const initiatePayment = async (req, res) => {
     }
 };
 
-// When payment is Successful (Web-hook/Notify logic) not implemented yet, but this is where you would handle the payment gateway's response and update the database accordingly
 export const handlePaymentNotify = async (req, res) => {
+    console.log("===== PAYHERE NOTIFY HIT =====");
+    console.log("Headers:", JSON.stringify(req.headers));
+    console.log("Body:", JSON.stringify(req.body));
+    console.log("Content-Type:", req.headers['content-type']);
     try {
-        const { order_id, status_code, md5sig } = req.body; 
-        console.log("Payment notification received:", req.body); // Debugging log
-        // PayHere වගේ එව්වොත් මේ විස්තර එවනවා
+        const { order_id, status_code, md5sig } = req.body;
 
-        if (status_code === "2") { // 2 කියන්නේ සාමාන්‍යයෙන් Success
+        console.log("Parsed - order_id:", order_id, "status_code:", status_code, "md5sig:", md5sig);
+
+        if (status_code === "2") {
             await pool.query("UPDATE payments SET payment_status = 'success' WHERE booking_id = ?", [order_id]);
             await pool.query("UPDATE bookings SET booking_status = 'confirmed' WHERE booking_id = ?", [order_id]);
-            
+            console.log("Payment SUCCESS for order:", order_id);
             res.send("Payment Successful");
+        } else {
+            console.log("Payment NOT success. status_code:", status_code);
+            res.send("Received");
         }
     } catch (err) {
+        console.error("Notify error:", err);
         res.status(500).send("Error");
     }
 };
