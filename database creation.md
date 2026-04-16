@@ -290,7 +290,7 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_id INT AUTO_INCREMENT PRIMARY KEY,
     booking_id INT,
     amount DECIMAL(10, 2) NOT NULL,
-    payment_method ENUM('card', 'cash', 'bank_transfer') NOT NULL,
+    payment_method ENUM('card', 'cash', 'bank_transfer', 'payhere') NOT NULL,
     transaction_id VARCHAR(100), -- Gateway එකෙන් එන reference එක
     payment_status ENUM('pending', 'success', 'failed') DEFAULT 'pending',
     paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

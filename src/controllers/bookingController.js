@@ -98,6 +98,30 @@ export const getMyBookings = async (req, res) => {
     }
 };
 
+// Get booking by ID
+export const getBookingById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await pool.query(
+            `SELECT b.*, m.model_name, v.plate_number 
+             FROM bookings b 
+             JOIN vehicles v ON b.vehicle_id = v.vehicle_id 
+             JOIN vehicle_models m ON v.model_id = m.model_id 
+             WHERE b.booking_id = ?`,
+            [id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 // Admin: update booking status
 export const updateBookingStatus = async (req, res) => {
     try {

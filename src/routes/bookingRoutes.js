@@ -5,6 +5,7 @@ import {
     searchAvailableVehicles,
     placeBooking,
     getMyBookings,
+    getBookingById,
     getAllBookingsForAdmin,
     updateBookingStatus,
 } from "../controllers/bookingController.js";
@@ -202,6 +203,58 @@ router.post("/place", verifyToken, placeBooking);
  *         description: Server error
  */
 router.get("/my-bookings", verifyToken, getMyBookings);
+
+/**
+ * @swagger
+ * /api/v1/bookings/{id}:
+ *   get:
+ *     summary: Get a booking by ID
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     responses:
+ *       200:
+ *         description: Booking details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 booking_id:
+ *                   type: integer
+ *                 user_id:
+ *                   type: integer
+ *                 vehicle_id:
+ *                   type: integer
+ *                 pickup_date:
+ *                   type: string
+ *                   format: date
+ *                 dropoff_date:
+ *                   type: string
+ *                   format: date
+ *                 total_price:
+ *                   type: number
+ *                 booking_status:
+ *                   type: string
+ *                 model_name:
+ *                   type: string
+ *                 plate_number:
+ *                   type: string
+ *       404:
+ *         description: Booking not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/:id", verifyToken, getBookingById);
 
 /**
  * @swagger
