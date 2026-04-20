@@ -9,8 +9,8 @@ import {
   updateCharger,
   editChargerAgent,
   unassignCharger,
-  getChargersPublic
-
+  getChargersPublic,
+  searchChargerByOcppId
 } from "../controllers/chargerController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -155,6 +155,31 @@ router.post("/", createCharger);
  *         description: Unauthorized
  */
 router.get("/chargers-admin", getChargersAdmin);
+
+/**
+ * @swagger
+ * /api/v1/chargers/search:
+ *   get:
+ *     summary: Search charger by OCPP ID
+ *     tags: [Chargers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: ocpp_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The OCPP ID of the charger to search for
+ *     responses:
+ *       200:
+ *         description: Charger found
+ *       400:
+ *         description: Missing ocpp_id parameter
+ *       404:
+ *         description: Charger not found
+ */
+router.get("/search", searchChargerByOcppId);
 
 /**
  * @swagger

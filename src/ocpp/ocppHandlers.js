@@ -44,6 +44,16 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                 console.log(`💠💠💠Changing status of charger ${chargePointId} connector ${statusConnectorId} to ${chargerStatus}`);
                 await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
             }
+            // If all connectors are AVAILABLE, set charger status to AVAILABLE
+            if (chargerStatus === "AVAILABLE") {
+                const charger = await chargerService.getChargerById(chargePointId);
+                if (charger) {
+                    const [connectors] = await pool.query("SELECT status FROM connectors WHERE charger_id = ?", [charger.id]);
+                    if (connectors.every(c => c.status === "AVAILABLE")) {
+                        await chargerService.updateChargerStatus(charger.id, "AVAILABLE");
+                    }
+                }
+            }
             ws.send(JSON.stringify([3, uid, {}]));
             break;
 
@@ -156,8 +166,8 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                         amount: cost,
                         status: "COMPLETED"
                     });
-                    // Update connector status to IDLE and clear active charge
-                    await chargeController.setActiveChargeAndStatus(charge.charger_id, charge.connector_id, null, "AVAILABLE");
+                    // Only clear active charge, do not set status to AVAILABLE here
+                    await chargeController.setActiveChargeAndStatus(charge.charger_id, charge.connector_id, null, null);
                     
                     if (charge.customer_id && cost > 0) {
                         const [stopUserRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
@@ -236,7 +246,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
 
                                 // 2. Send alert to user about insufficient balance
                                 sendToUser(charge.customer_id, {
-                                    type: "insufficient_balance",
+                                    type: "charging_stopped",
                                     message: "Charging stopped due to insufficient wallet balance. Please recharge your wallet.",
                                     currentBalance: currentBalance,
                                     estimatedCost: estimatedCost

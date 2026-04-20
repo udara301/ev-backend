@@ -728,6 +728,72 @@ export const getChargersPublic = async (req, res) => {
 
 
 
+// Search charger by OCPP ID
+export const searchChargerByOcppId = async (req, res) => {
+  try {
+    const { ocpp_id } = req.query;
+
+    if (!ocpp_id) {
+      return res.status(400).json({ message: "ocpp_id query parameter is required" });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT 
+        c.id, c.ocpp_id, c.serial_number, c.checksum, c.status, c.location,
+        c.street_name, c.city, c.price_per_kwh, c.agent_id, c.created_at,
+        ct.model AS charger_type_model, ct.current_type,
+        con.id AS connector_db_id,
+        con.connector_id,
+        con.status AS connector_status,
+        con.connector_type,
+        con.max_power_kw,
+        con.output_voltage,
+        con.amperage
+      FROM chargers c
+      LEFT JOIN charger_types ct ON c.charger_type_id = ct.id
+      LEFT JOIN connectors con ON con.charger_id = c.id
+      WHERE c.ocpp_id = ?
+      ORDER BY con.connector_id ASC`,
+      [ocpp_id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Charger not found" });
+    }
+
+    const first = rows[0];
+    const charger = {
+      id: first.id,
+      ocpp_id: first.ocpp_id,
+      status: first.status,
+      location: first.location,
+      street_name: first.street_name,
+      city: first.city,
+      price_per_kwh: first.price_per_kwh,
+      agent_id: first.agent_id,
+      created_at: first.created_at,
+      charger_type_model: first.charger_type_model,
+      current_type: first.current_type,
+      connectors: rows
+        .filter(r => r.connector_db_id)
+        .map(r => ({
+          id: r.connector_db_id,
+          connector_id: r.connector_id,
+          status: r.connector_status,
+          connector_type: r.connector_type,
+          max_power_kw: r.max_power_kw,
+          output_voltage: r.output_voltage,
+          amperage: r.amperage,
+        })),
+    };
+
+    res.json(charger);
+  } catch (err) {
+    console.error("Error searching charger by OCPP ID:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // Get charger report
 export const getChargerReport = async (req, res) => {
   try {

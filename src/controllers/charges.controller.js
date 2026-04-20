@@ -256,9 +256,9 @@ export async function setActiveChargeAndStatus(chargerId, connectorId, chargeId,
 // =====================================================
 
 export const stopCharging = async (req, res) => {
-    if (req.user.role !== "AGENT_ADMIN") {
-        return res.status(403).json({ message: "Forbidden" });
-    }
+    // if (req.user.role !== "AGENT_ADMIN") {
+    //     return res.status(403).json({ message: "Forbidden" });
+    // }
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -355,4 +355,55 @@ export const stopChargeWithChargeId = async (chargeId, { end_time, meter_stop, a
 export const findByOcppTransactionId = async (ocppTransactionId) => {
     const [rows] = await pool.query("SELECT * FROM charges WHERE ocpp_transaction_id = ?", [ocppTransactionId]);
     return rows[0];
+};
+
+// =====================================================
+// Get active charging session for the logged-in user
+// =====================================================
+export const getActiveChargingSession = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const [rows] = await pool.query(
+            `SELECT 
+                ch.id AS charge_id,
+                ch.charger_id,
+                ch.connector_id,
+                ch.start_time,
+                ch.meter_start,
+                ch.meter_stop,
+                ch.amount,
+                ch.status,
+                ch.vehicle_number,
+                ch.ocpp_transaction_id,
+                ch.note,
+                TIMESTAMPDIFF(SECOND, ch.start_time, NOW()) / 3600 AS duration_hours,
+                c.ocpp_id,
+                c.location,
+                c.street_name,
+                c.city,
+                c.price_per_kwh,
+                ct.model AS charger_type_model,
+                ct.current_type,
+                con.connector_type,
+                con.max_power_kw
+            FROM charges ch
+            JOIN chargers c ON ch.charger_id = c.id
+            LEFT JOIN charger_types ct ON c.charger_type_id = ct.id
+            LEFT JOIN connectors con ON con.charger_id = c.id AND con.connector_id = ch.connector_id
+            WHERE ch.customer_id = ? AND ch.status IN ('PENDING', 'CHARGING')
+            ORDER BY ch.created_at DESC
+            LIMIT 1`,
+            [userId]
+        );
+
+        if (rows.length === 0) {
+            return res.json({ active_session: null });
+        }
+
+        res.json({ active_session: rows[0] });
+    } catch (err) {
+        console.error("Error fetching active charging session:", err);
+        res.status(500).json({ message: "Internal server error" });
+    }
 };
