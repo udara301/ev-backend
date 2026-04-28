@@ -36,6 +36,28 @@ export const handlePaymentNotify = async (req, res) => {
         if (status_code === "2") {
             await pool.query("UPDATE payments SET payment_status = 'success' WHERE booking_id = ?", [order_id]);
             await pool.query("UPDATE bookings SET booking_status = 'confirmed' WHERE booking_id = ?", [order_id]);
+            // Send booking confirmation email after payment success
+            // Get user email and booking/vehicle info
+            const [[booking]] = await pool.query(
+                `SELECT b.*, u.email, u.name, v.plate_number, m.model_name FROM bookings b
+                 JOIN users u ON b.user_id = u.id
+                 JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+                 JOIN vehicle_models m ON v.model_id = m.model_id
+                 WHERE b.booking_id = ?`,
+                [order_id]
+            );
+            if (booking && booking.email) {
+                // Import sendBookingEmail if not already imported
+                const { sendBookingEmail } = await import("../utils/mailer.js");
+                await sendBookingEmail(booking.email, {
+                    vehicle: `${booking.model_name} (${booking.plate_number})`,
+                    pickup_date: booking.pickup_date,
+                    pickup_time: booking.pickup_time,
+                    dropoff_date: booking.dropoff_date,
+                    dropoff_time: booking.dropoff_time,
+                    total_price: booking.total_price
+                });
+            }
             console.log("Payment SUCCESS for order:", order_id);
             res.send("Payment Successful");
         } else {
