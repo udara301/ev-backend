@@ -10,7 +10,29 @@ import {
     updateBookingStatus,
 } from "../controllers/bookingController.js";
 
+
 const router = express.Router();
+
+import { sendBookingEmail } from "../utils/mailer.js";
+// Test endpoint for booking email
+router.post("/test-email", async (req, res) => {
+    console.log("Received request to send test booking email");
+    const { to } = req.body;
+    try {
+        await sendBookingEmail(to, {
+            vehicle: "Test Vehicle (TEST-1234)",
+            pickup_date: "2026-05-01",
+            pickup_time: "10:00",
+            dropoff_date: "2026-05-03",
+            dropoff_time: "16:00",
+            total_price: "5000"
+        });
+        res.json({ message: "Test booking email sent" });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to send test email", error: err.message });
+    }
+});
+
 
 /**
  * @swagger

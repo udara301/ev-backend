@@ -1,5 +1,6 @@
 import { pool } from "../config/db.js";
 import { sendRemoteStart, sendRemoteStop } from "../ocpp/ocppSender.js";
+import { setChargerUnavailable, updateConnectorStatus } from "../controllers/ocppController.js";
 import * as walletService from "../services/wallet.service.js";
 // =====================================================
 // start charging session
@@ -78,10 +79,19 @@ export const startCharging = async (req, res) => {
 
 
 
+
         const started = sendRemoteStart(chargerId, "ADMIN", parseInt(connectorId));
         console.log("Remote start command sent. OCPP response:", started);
         if (!started) {
+            // Mark charger and connector as offline
+            await setChargerUnavailable(chargerId);
+            await updateConnectorStatus(chargerId, connectorId, "OFFLINE");
             await connection.rollback();
+            // Mark the charge session as FAILED (outside transaction)
+            await pool.query(
+                `UPDATE charges SET status = 'FAILED', end_time = NOW() WHERE id = ?`,
+                [chargeId]
+            );
             return res.status(400).json({ message: "Connector is offline" });
         }
 
@@ -290,7 +300,15 @@ export const stopCharging = async (req, res) => {
         const stopped = sendRemoteStop(chargerId, charges[0].ocpp_transaction_id);
 
         if (!stopped) {
+            // Mark charger and connector as offline
+            await setChargerUnavailable(chargerId);
+            await updateConnectorStatus(chargerId, connectorId, "UNAVAILABLE");
             await connection.rollback();
+            // Mark the charge session as FAILED (outside transaction)
+            await pool.query(
+                `UPDATE charges SET status = 'FAILED', end_time = NOW() WHERE id = ?`,
+                [charges[0].id]
+            );
             return res.status(400).json({ message: "Charger is offline" });
         }
 

@@ -1,4 +1,5 @@
 import { pool } from "../config/db.js";
+import { sendBookingEmail } from "../utils/mailer.js";
 
 
 // Search for available vehicles based on category and date range
@@ -67,6 +68,28 @@ export const placeBooking = async (req, res) => {
             "INSERT INTO bookings (user_id, vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')",
             [user_id, vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price]
         );
+
+        // 3. Get user email and vehicle info for email
+        const [[user]] = await connection.query(
+            "SELECT email, name FROM users WHERE id = ?",
+            [user_id]
+        );
+        const [[vehicle]] = await connection.query(
+            `SELECT v.plate_number, m.model_name FROM vehicles v JOIN vehicle_models m ON v.model_id = m.model_id WHERE v.vehicle_id = ?`,
+            [vehicle_id]
+        );
+
+        // 4. Send booking confirmation email
+        if (user && user.email) {
+            await sendBookingEmail(user.email, {
+                vehicle: `${vehicle.model_name} (${vehicle.plate_number})`,
+                pickup_date,
+                pickup_time,
+                dropoff_date,
+                dropoff_time,
+                total_price
+            });
+        }
 
         await connection.commit();
         res.status(201).json({ message: "Booking placed successfully", bookingId: booking.insertId });
