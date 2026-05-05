@@ -187,7 +187,7 @@ export const forgotPassword = async (req, res) => {
       email,
     ]);
 
-    const resetLink = `http://localhost:4200/reset-password?token=${resetToken}`;
+    const resetLink = `https://travelwithev.com/reset-password?token=${resetToken}`;
     await sendResetEmail(email, resetLink);
 
     res.json({ message: "Password reset link sent to your email" });
