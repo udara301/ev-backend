@@ -1,3 +1,20 @@
+// Send welcome email to new customer
+export const sendWelcomeEmail = async (to, name) => {
+  const mailOptions = {
+    from: `"EV Charger System" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Welcome to EV Charger System!",
+    html: `
+      <h2>Welcome, ${name}!</h2>
+      <p>Thank you for registering with EV Charger System. We're excited to have you on board.</p>
+      <p>You can now book charging stations, manage your vehicles, and enjoy seamless EV charging experiences.</p>
+      <p>If you have any questions or need support, feel free to contact us.</p>
+      <br>
+      <p>Best regards,<br>EV Charger System Team</p>
+    `,
+  };
+  await transporter.sendMail(mailOptions);
+};
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 dotenv.config();

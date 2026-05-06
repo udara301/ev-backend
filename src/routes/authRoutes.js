@@ -1,3 +1,4 @@
+
 import express from "express";
 import {
   signup,
@@ -8,6 +9,7 @@ import {
   resetPassword,
   getProfile,
   updateCustomerProfile,
+  changePassword,
   googleLogin,
 } from "../controllers/authController.js";
 import { verifyToken, authorize } from "../middleware/authMiddleware.js";
@@ -125,7 +127,7 @@ router.post("/google-login/customer", googleLogin); // Google OAuth login for cu
  *         description: Invalid credentials
  */
 router.post("/login", login);
- 
+
 /**
  * @swagger
  * /api/v1/auth/login/customer:
@@ -156,6 +158,38 @@ router.post("/login", login);
  *         description: User is not a customer
  */
 router.post("/login/customer", loginCustomer);
+
+/**
+ * @swagger
+ * /api/v1/auth/change-password:
+ *   post:
+ *     summary: Change password for logged-in user
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Invalid input or current password incorrect
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/change-password", verifyToken, changePassword);
 
 /**
  * @swagger

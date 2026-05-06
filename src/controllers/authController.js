@@ -1,8 +1,9 @@
+
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../config/db.js";
 import dotenv from "dotenv";
-import { sendResetEmail } from "../utils/mailer.js";
+import { sendResetEmail, sendWelcomeEmail } from "../utils/mailer.js";
 import { OAuth2Client } from 'google-auth-library';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 dotenv.config();
@@ -47,7 +48,6 @@ export const signupCustomer = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" })
     };
 
-
     const hash = await bcrypt.hash(password, 10);
     const [userResult] = await connection.query(
       "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'CUSTOMER')",
@@ -59,12 +59,47 @@ export const signupCustomer = async (req, res) => {
     await connection.query("INSERT INTO wallets (customer_id, balance) VALUES (?, 0)", [userId]);
 
     await connection.commit();
+
+    // Send welcome email
+    sendWelcomeEmail(email, name).catch((err) => {
+      console.error("Failed to send welcome email:", err);
+    });
+
     res.json({ message: "Customer registered successfully" });
   } catch (err) {
     await connection.rollback();
     res.status(500).json({ message: "Server error" });
   } finally {
     connection.release();
+  }
+};
+
+// Change password (protected)
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current and new password required" });
+    }
+
+    // Get user
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [userId]);
+    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+    const user = rows[0];
+
+    // Check current password
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) return res.status(400).json({ message: "Current password is incorrect" });
+
+    // Update to new password
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [hash, userId]);
+
+    res.json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
