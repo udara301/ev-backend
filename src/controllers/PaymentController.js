@@ -108,11 +108,7 @@ export const generatePaymentHash = (req, res) => {
     try {
         const { order_id, amount, currency } = req.body; // currency එකත් body එකෙන් ගන්න
         const merchant_id = process.env.PAYHERE_MERCHANT_ID;
-        const merchant_secret = process.env.PAYHERE_MERCHANT_SECRET; 
-
-        console.log("Generating hash with:", { merchant_id, order_id, amount, currency });
-        console.log("Merchant Secret (before hashing):", merchant_secret);
-        
+        const merchant_secret = process.env.PAYHERE_MERCHANT_SECRET;        
 
         // 1. uppercase MD5 hash 
         const hashedSecret = crypto.createHash('md5')

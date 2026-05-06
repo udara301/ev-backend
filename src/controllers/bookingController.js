@@ -90,7 +90,8 @@ export const getMyBookings = async (req, res) => {
              FROM bookings b 
              JOIN vehicles v ON b.vehicle_id = v.vehicle_id 
              JOIN vehicle_models m ON v.model_id = m.model_id 
-             WHERE b.user_id = ?`,
+             WHERE b.user_id = ?
+             ORDER BY b.booking_id DESC`,
             [req.user.id]
         );
         res.json(rows);
