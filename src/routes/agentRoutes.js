@@ -5,6 +5,7 @@ import {
   getAgentById,
   updateAgent,
   deleteAgent,
+  getMyAgentDetails,
 } from "../controllers/agentController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -47,6 +48,27 @@ router.use(verifyToken);
  *         description: Unauthorized
  */
 router.post("/", createAgent);
+/**
+ * @swagger
+ * /api/v1/agents/me:
+ *   get:
+ *     summary: Get details for the logged-in agent
+ *     tags: [Agents]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Agent details with earnings and payouts
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Agent not found
+ */
+router.get("/me", getMyAgentDetails);
+
+
 
 /**
  * @swagger
@@ -125,6 +147,8 @@ router.get("/:agentId", getAgentById);
  */
 router.put("/:agentId", updateAgent);
 
+
+
 /**
  * @swagger
  * /api/v1/agents/{agentId}:
@@ -148,5 +172,8 @@ router.put("/:agentId", updateAgent);
  *         description: Unauthorized
  */
 router.delete("/:agentId", deleteAgent);
+
+
+
 
 export default router;

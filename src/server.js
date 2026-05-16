@@ -18,6 +18,8 @@ import locationRoutes from "./routes/locationRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
+import payoutRoutes from "./routes/payoutRoutes.js";
+import agentEarningsRoutes from "./routes/agentEarningsRoutes.js";
 import { startCancelStaleBookingsCron } from "./cron/cancelStaleBookings.js";
 
 dotenv.config();
@@ -41,6 +43,15 @@ app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/wallet", walletRoutes);
+
+// Payout routes
+app.use("/api/v1/payouts", payoutRoutes);
+
+
+
+// Agent earnings routes
+app.use("/api/v1/agent-earnings", agentEarningsRoutes);
+
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

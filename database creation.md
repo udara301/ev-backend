@@ -314,12 +314,26 @@ CREATE TABLE IF NOT EXISTS pickup_locations (
     price INT
 );
 
+-- payout table to store Superadmin payouts to the agents
+
 CREATE TABLE payouts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     agent_id BIGINT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
-    status ENUM('PENDING', 'PAID') DEFAULT 'PENDING',
+    status ENUM('PENDING', 'PAID', 'REVERTED') DEFAULT 'PENDING',
     paid_at TIMESTAMP NULL,
+    reverted_at TIMESTAMP NULL,
     receipt_url VARCHAR(500),
     FOREIGN KEY (agent_id) REFERENCES agents(id)
+);
+
+-- agent_earnings to save earnings for agents via their charger usage 
+
+CREATE TABLE agent_earnings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    agent_id BIGINT NOT NULL,
+    charge_id BIGINT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL, 
+    commission_amount DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

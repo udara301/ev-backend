@@ -6,7 +6,7 @@ export const getBalance = async (customerId) => {
     return rows.length ? parseFloat(rows[0].balance) : 0;
 };
 
-export const deductBalance = async (customerId, chargeId, amount) => {
+export const deductBalance = async (customerId, chargeId, amount, chargerId) => {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -18,7 +18,7 @@ export const deductBalance = async (customerId, chargeId, amount) => {
         const walletId = wallets[0].id;
         const newBalance = parseFloat(wallets[0].balance) - amount;
 
-        // 2. update the balance
+        // 2. update the balance from customer
         await conn.query("UPDATE wallets SET balance = ? WHERE id = ?", [newBalance, walletId]);
 
         // 3. record transaction
@@ -28,10 +28,40 @@ export const deductBalance = async (customerId, chargeId, amount) => {
             [walletId, chargeId, amount]
         );
 
+        // 4. get Agent commission rate
+        const [agentData] = await conn.query(
+            `SELECT a.id, a.commission_percentage 
+             FROM agents a
+             JOIN chargers c ON c.agent_id = a.id
+             WHERE c.id = ?`,
+            [chargerId]
+        );
+
+        if (agentData.length > 0) {
+            const agentId = agentData[0].id;
+            const commPercentage = agentData[0].commission_percentage;
+            const agentEarnings = (amount * commPercentage) / 100;
+
+            console.log(`Agent ID: ${agentId}, Commission Percentage: ${commPercentage}%, Agent Earnings: ${agentEarnings}`);
+            // Increasing the balance for agent
+            await conn.query(
+                "UPDATE agents SET payable_balance = payable_balance + ? WHERE id = ?",
+                [agentEarnings, agentId]
+            );
+
+            // Record the agent's earnings in the agent_earnings table for audit purposes
+            await conn.query(
+                `INSERT INTO agent_earnings (agent_id, charge_id, total_amount, commission_amount) 
+                 VALUES (?, ?, ?, ?)`,
+                [agentId, chargeId, amount, agentEarnings]
+            );
+        }
+
         await conn.commit();
         return newBalance;
     } catch (error) {
         await conn.rollback();
+        console.error("Wallet Deduction Error:", error);
         throw error;
     } finally {
         conn.release();

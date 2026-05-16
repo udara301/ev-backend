@@ -1,3 +1,4 @@
+
 // users table will be used for both agents and customers
 import { pool } from "../config/db.js";
 import bcrypt from "bcrypt";
@@ -75,7 +76,8 @@ export const getAgents = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
 
     const [agents] = await pool.query(`
-      SELECT u.id, u.name, u.email, a.contact_person, a.phone_number, a.street_address, a.city, a.status, u.created_at
+      SELECT u.id, u.name, u.email, a.contact_person, a.phone_number, 
+      a.street_address, a.city, a.status, a.commission_percentage, a.payable_balance, u.created_at
       FROM users u
       JOIN agents a ON u.id = a.user_id
       WHERE u.role = 'AGENT_ADMIN'
@@ -307,5 +309,59 @@ export const deleteAgent = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   } finally {
     if (connection) connection.release();
+  }
+};
+
+// Get details for the logged-in agent (Agent only)
+export const getMyAgentDetails = async (req, res) => {
+  try {
+    // if (req.user.role !== "AGENT_ADMIN")
+    //   return res.status(403).json({ message: "Forbidden" });
+
+    // Find agent by user id
+    const userId = req.user.id;
+    const [rows] = await pool.query(
+      `SELECT 
+        u.id AS user_id,
+        u.name,
+        u.email,
+        u.created_at,
+        a.id AS agent_id,
+        a.contact_person,
+        a.phone_number,
+        a.street_address,
+        a.city,
+        a.status,
+        a.commission_percentage,
+        a.payable_balance,
+        a.created_at AS agent_created_at
+      FROM users u
+      LEFT JOIN agents a ON u.id = a.user_id
+      WHERE u.id = ? AND u.role = 'AGENT_ADMIN'`,
+      [userId]
+    );
+    if (rows.length === 0)
+      return res.status(404).json({ message: "Agent not found" });
+
+    // Optionally, fetch agent earnings
+    const [earnings] = await pool.query(
+      `SELECT * FROM agent_earnings WHERE agent_id = ? ORDER BY created_at DESC`,
+      [rows[0].agent_id]
+    );
+
+    // Optionally, fetch payouts
+    const [payouts] = await pool.query(
+      `SELECT * FROM payouts WHERE agent_id = ? ORDER BY paid_at DESC`,
+      [rows[0].agent_id]
+    );
+
+    res.json({
+      ...rows[0],
+      earnings,
+      payouts
+    });
+  } catch (err) {
+    console.error("❌ Error fetching my agent details:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

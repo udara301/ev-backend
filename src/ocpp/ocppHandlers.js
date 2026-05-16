@@ -172,7 +172,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                     if (charge.customer_id && cost > 0) {
                         const [stopUserRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
                         if (stopUserRows[0]?.role === "CUSTOMER") {
-                            await walletService.deductBalance(charge.customer_id, charge.id, cost);
+                            await walletService.deductBalance(charge.customer_id, charge.id, cost, charge.charger_id);
                             console.log(`💰 Deducted ${cost} from user ${charge.customer_id}'s wallet.`);
                         }
                     }
