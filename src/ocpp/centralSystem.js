@@ -15,7 +15,7 @@ console.log(`🚀 OCPP Server running on ws://localhost:${PORT}`);
 wss.on("connection", (ws, req) => {
     const urlParts = req.url.split("/");
     const chargePointId = urlParts.pop();
-    
+
     console.log(`🔌 Charger connected: ${chargePointId}`);
 
     connectedChargers.set(chargePointId, ws);
@@ -41,6 +41,12 @@ wss.on("connection", (ws, req) => {
 
     ws.on("close", () => {
         console.log(`❌ Charger disconnected: ${chargePointId}`);
+        broadcastToFrontend({
+            type: "connector_status_updated",
+            chargerId: chargePointId,
+            connectorId: null, // connectorId null means all connectors of this charger
+            status: "UNAVAILABLE"
+        });
         setChargerUnavailable(chargePointId);
         connectedChargers.delete(chargePointId);
     });
