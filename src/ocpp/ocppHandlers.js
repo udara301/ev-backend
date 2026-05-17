@@ -43,7 +43,9 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
             if (statusConnectorId && statusConnectorId > 0) {
                 // Update specific connector status
                 console.log(`💠💠💠Changing status of charger ${chargePointId} connector ${statusConnectorId} to ${chargerStatus}`);
-                await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
+                if (chargerStatus === "AVAILABLE" || chargerStatus === "UNAVAILABLE" || chargerStatus === "FAULTED" || chargerStatus === "CHARGING" || chargerStatus === "ERROR" || chargerStatus === "PREPARING" || chargerStatus === "SUSPENDEDEVSE") {
+                    await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
+                }
                 // Broadcasting charger status updates to frontend clients
                 if (chargerStatus === "AVAILABLE" || chargerStatus === "UNAVAILABLE") {
                     broadcastToFrontend({
@@ -179,8 +181,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                         amount: cost,
                         status: "COMPLETED"
                     });
-                    // Only clear active charge, do not set status to AVAILABLE here
-                    await chargeController.setActiveChargeAndStatus(charge.charger_id, charge.connector_id, null, null);
+                    // Only clear active charge, do not set status to AVAILABLE here --> AVAILABLE status will be set by StatusNotification from charger, which is more real-time and reliable. This also prevents potential race condition.
 
                     if (charge.customer_id && cost > 0) {
                         const [stopUserRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
@@ -190,8 +191,8 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                         }
                     }
 
-                    if (stopCharger && stopCharger.user_id) {
-                        sendToUser(stopCharger.user_id, {
+                    if (charge.customer_id) {
+                        sendToUser(charge.customer_id, {
                             type: "charging_stopped",
                             chargerId: charge.charger_id,
                             connectorId: charge.connector_id,

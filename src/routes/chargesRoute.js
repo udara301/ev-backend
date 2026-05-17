@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
-import { startCharging, stopCharging, getActiveChargingSession } from "../controllers/charges.controller.js";
+import { startCharging, stopCharging, getActiveChargingSession, getCustomerChargeHistory } from "../controllers/charges.controller.js";
 
 const router = express.Router();
 
@@ -96,5 +96,35 @@ router.post("/agent/:chargerId/:connectorId/stop", stopCharging);
  *         description: Unauthorized
  */
 router.get("/active-session", getActiveChargingSession);
+
+/**
+ * @swagger
+ * /api/v1/charges/history:
+ *   get:
+ *     summary: Get charge history for logged-in customer
+ *     description: Returns paginated charge records for the authenticated user using charges.customer_id.
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Charge history fetched successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/history", getCustomerChargeHistory);
 
 export default router;

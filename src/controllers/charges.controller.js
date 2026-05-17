@@ -419,3 +419,69 @@ export const getActiveChargingSession = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+// =====================================================
+// Get charge history for the logged-in customer
+// =====================================================
+export const getCustomerChargeHistory = async (req, res) => {
+    try {
+        const customerId = req.user.id;
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+        const offset = (page - 1) * limit;
+
+        const [historyRows] = await pool.query(
+            `SELECT
+                ch.id AS charge_id,
+                ch.charger_id,
+                ch.connector_id,
+                ch.start_time,
+                ch.end_time,
+                ch.meter_start,
+                ch.meter_stop,
+                ch.amount,
+                ch.status,
+                ch.vehicle_number,
+                ch.ocpp_transaction_id,
+                ch.note,
+                c.ocpp_id,
+                c.location,
+                c.street_name,
+                c.city,
+                c.price_per_kwh,
+                ct.model AS charger_type_model,
+                ct.current_type,
+                con.connector_type,
+                con.max_power_kw,
+                TIMESTAMPDIFF(SECOND, ch.start_time, ch.end_time) AS duration_seconds
+            FROM charges ch
+            JOIN chargers c ON ch.charger_id = c.id
+            LEFT JOIN charger_types ct ON c.charger_type_id = ct.id
+            LEFT JOIN connectors con ON con.charger_id = c.id AND con.connector_id = ch.connector_id
+            WHERE ch.customer_id = ?
+            ORDER BY ch.created_at DESC
+            LIMIT ? OFFSET ?`,
+            [customerId, limit, offset]
+        );
+
+        const [countRows] = await pool.query(
+            `SELECT COUNT(*) AS total
+             FROM charges
+             WHERE customer_id = ?`,
+            [customerId]
+        );
+
+        const total = countRows[0]?.total || 0;
+
+        res.json({
+            page,
+            limit,
+            total,
+            total_pages: Math.ceil(total / limit),
+            history: historyRows
+        });
+    } catch (err) {
+        console.error("Error fetching customer charge history:", err);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
