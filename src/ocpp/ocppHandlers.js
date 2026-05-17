@@ -2,7 +2,7 @@
 import { pool } from "../config/db.js";
 import * as chargerService from "../services/charger.service.js";
 import * as chargeController from "../controllers/charges.controller.js";
-import { sendToUser } from "../websocket/frontendws.js";
+import { sendToUser, broadcastToFrontend } from "../websocket/frontendws.js";
 import { setChargerIdle, updateConnectorStatus } from "../controllers/ocppController.js";
 import * as walletService from "../services/wallet.service.js";
 import { sendRemoteStop } from "./ocppSender.js";
@@ -36,25 +36,34 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
         // 3. StatusNotification
         // ------------------------------
         case "StatusNotification":
-            console.log(`📡 StatusNotification from ${chargePointId}`, payload);
-            const chargerStatus = payload.status;
+            const chargerStatus = payload.status.toUpperCase();;
             const statusConnectorId = payload.connectorId;
-            console.log(`📡 ${chargePointId} connector ${statusConnectorId} status: ${chargerStatus}`);
+            // console.log(`📡 ${chargePointId} connector ${statusConnectorId} status: ${chargerStatus}`);
+            // Note statusConnectorId = 0 means whole charger. connector status can be sent periodically and it can be duplicated.
             if (statusConnectorId && statusConnectorId > 0) {
                 // Update specific connector status
                 console.log(`💠💠💠Changing status of charger ${chargePointId} connector ${statusConnectorId} to ${chargerStatus}`);
                 await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
+                // Broadcasting charger status updates to frontend clients
+                broadcastToFrontend({
+                    type: "connector_status_updated",
+                    chargerId: chargePointId,
+                    connectorId: statusConnectorId,
+                    status: chargerStatus
+                }); 
             }
+
+            // ** status should be connected with connectors not charger
             // If all connectors are AVAILABLE, set charger status to AVAILABLE
-            if (chargerStatus === "AVAILABLE") {
-                const charger = await chargerService.getChargerById(chargePointId);
-                if (charger) {
-                    const [connectors] = await pool.query("SELECT status FROM connectors WHERE charger_id = ?", [charger.id]);
-                    if (connectors.every(c => c.status === "AVAILABLE")) {
-                        await chargerService.updateChargerStatus(charger.id, "AVAILABLE");
-                    }
-                }
-            }
+            // if (chargerStatus === "AVAILABLE") {
+            //     const charger = await chargerService.getChargerById(chargePointId);
+            //     if (charger) {
+            //         const [connectors] = await pool.query("SELECT status FROM connectors WHERE charger_id = ?", [charger.id]);
+            //         if (connectors.every(c => c.status === "AVAILABLE")) {
+            //             await chargerService.updateChargerStatus(charger.id, "AVAILABLE");
+            //         }
+            //     }
+            // }
             ws.send(JSON.stringify([3, uid, {}]));
             break;
 
@@ -169,7 +178,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                     });
                     // Only clear active charge, do not set status to AVAILABLE here
                     await chargeController.setActiveChargeAndStatus(charge.charger_id, charge.connector_id, null, null);
-                    
+
                     if (charge.customer_id && cost > 0) {
                         const [stopUserRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
                         if (stopUserRows[0]?.role === "CUSTOMER") {
