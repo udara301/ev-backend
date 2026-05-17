@@ -2,6 +2,7 @@
 import { WebSocketServer } from "ws";
 import { handleOcppRequest } from "./ocppHandlers.js";
 import { setChargerUnavailable } from "../controllers/ocppController.js";
+import { broadcastToFrontend } from "../websocket/frontendws.js";
 
 const PORT = 8080;
 
