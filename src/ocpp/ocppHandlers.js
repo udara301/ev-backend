@@ -16,7 +16,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
         // 1. BootNotification
         // ------------------------------
         case "BootNotification":
-            console.log(`✅ ${chargePointId} booted`, payload);
+            console.log(`✅ charger point Id ${chargePointId} charger booted`, payload);
             await setChargerIdle(chargePointId);
             ws.send(JSON.stringify([3, uid, {
                 status: "Accepted",
@@ -36,6 +36,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
         // 3. StatusNotification
         // ------------------------------
         case "StatusNotification":
+            console.log(`📡 StatusNotification from ${chargePointId}`, payload);
             const chargerStatus = payload.status;
             const statusConnectorId = payload.connectorId;
             console.log(`📡 ${chargePointId} connector ${statusConnectorId} status: ${chargerStatus}`);
