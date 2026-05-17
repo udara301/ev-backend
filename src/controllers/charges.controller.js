@@ -9,9 +9,6 @@ import * as walletService from "../services/wallet.service.js";
 
 export const startCharging = async (req, res) => {
     const userRole = req.user.role; // CUSTOMER, AGENT_ADMIN, etc.
-    // if (req.user.role !== "AGENT_ADMIN" ) {
-    //     // return res.status(403).json({ message: "Forbidden" });
-    // }
     if (userRole === "CUSTOMER") {
         const userId = req.user.id;
         // 1️⃣ Wallet Balance check (Minimum 200 LKR)
@@ -59,7 +56,7 @@ export const startCharging = async (req, res) => {
             return res.status(400).json({ message: "Connector is already in use" });
         }
 
-        // 3️⃣ Create charge session
+        // 3️⃣ Create charge session - set customer id as the user who started the charging session. if agent starts then customer id can be the agent id
         const [result] = await connection.query(
             `INSERT INTO charges (charger_id, connector_id, customer_id, start_time, status, vehicle_number)
        VALUES (?, ?, ?, NOW(), 'PENDING', ?)`,
@@ -76,10 +73,7 @@ export const startCharging = async (req, res) => {
        WHERE charger_id = ? AND connector_id = ?`,
             [chargeId, chargerId, connectorId]
         );
-
-
-
-
+        
         const started = sendRemoteStart(chargerId, "ADMIN", parseInt(connectorId));
         console.log("Remote start command sent. OCPP response:", started);
         if (!started) {

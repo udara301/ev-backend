@@ -45,12 +45,14 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                 console.log(`💠💠💠Changing status of charger ${chargePointId} connector ${statusConnectorId} to ${chargerStatus}`);
                 await updateConnectorStatus(chargePointId, statusConnectorId, chargerStatus);
                 // Broadcasting charger status updates to frontend clients
-                broadcastToFrontend({
-                    type: "connector_status_updated",
-                    chargerId: chargePointId,
-                    connectorId: statusConnectorId,
-                    status: chargerStatus
-                }); 
+                if (chargerStatus === "AVAILABLE" || chargerStatus === "UNAVAILABLE") {
+                    broadcastToFrontend({
+                        type: "connector_status_updated",
+                        chargerId: chargePointId,
+                        connectorId: statusConnectorId,
+                        status: chargerStatus
+                    });
+                }
             }
 
             // ** status should be connected with connectors not charger
@@ -111,6 +113,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                         meter_start: meterStart ?? null
                     };
                     charge = await chargeController.createCharge(newChargePayload);
+                    //    This is a fallback update for the rare case when charge was created without ocpp_transaction_id in the above step. We want to make sure ocpp_transaction_id is always same with charger id(primary key) for easier tracking.
                     await chargeController.updateChargeWithOcppTx(charge.id, {
                         ocpp_transaction_id: charge.id,
                         status: "CHARGING",
@@ -132,9 +135,9 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                 ]));
 
                 // Sending the status to frontend via websocket
-                if (startCharger.user_id) {
-                    console.log(`Sending charging_started event to user ${startCharger.user_id} for charger ${chargePointId}, connector ${connectorId}`);
-                    sendToUser(startCharger.user_id, {
+                if (charge.customer_id) {
+                    console.log(`Sending charging_started event to user ${charge.customer_id} for charger ${chargePointId}, connector ${connectorId}`);
+                    sendToUser(charge.customer_id, {
                         type: "charging_started",
                         chargerId: startCharger.id,
                         connectorId: connectorId,
