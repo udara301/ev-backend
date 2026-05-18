@@ -230,29 +230,29 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
             const timestamp = payload.timestamp;
             if (meterValue) {
                 const currentReading = parseFloat(meterValue.value);
-                await chargeController.updateMeterReadings(txId, currentReading);
+
                 // console.log(meterValue);
                 const meterCharger = await chargerService.getChargerById(chargePointId);
                 const charge = await chargeController.findByOcppTransactionId(txId);
 
-                if (meterCharger && meterCharger.user_id && charge) {
+                if (meterCharger && charge) {
                     // 1. Energy Calculation (kWh)
                     const energyConsumedKwh = currentReading - charge.meter_start;
 
                     // 2. Cost Calculation
                     const currentCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0);
-                    console.log(`Meter update for charger ${chargePointId}, connector ${meterConnectorId}: energy used = ${energyConsumedKwh} kWh, current cost = ${currentCost}`);
+                    await chargeController.updateMeterReadings(txId, currentReading, currentCost);
 
                     if (charge && charge.customer_id) {
                         // Check if user is a customer (not agent) before wallet check
                         const [userRows] = await pool.query("SELECT role FROM users WHERE id = ?", [charge.customer_id]);
                         const userRole = userRows[0]?.role;
-
+                        console.log(`User role for customer_id ${charge.customer_id} is ${userRole}`);
                         if (userRole === "CUSTOMER") {
                             const currentBalance = await walletService.getBalance(charge.customer_id);
-                            const estimatedCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0);
+                            const estimatedCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0); //same as currentCost but more explicit for this check
 
-                            if (currentBalance - estimatedCost <= 10) {
+                            if (currentBalance - estimatedCost <= 100) {
                                 console.warn(`⚠️ Insufficient balance for user ${charge.customer_id}. Sending Remote Stop.`);
 
                                 // 1. send remote stop command to charger
@@ -274,7 +274,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                     const currentTime = new Date().getTime();
                     const durationSeconds = Math.floor((currentTime - startTime) / 1000);
 
-                    sendToUser(meterCharger.user_id, {
+                    sendToUser(charge.customer_id, {
                         type: "meter_update",
                         chargerId: meterCharger.id,
                         connectorId: meterConnectorId,

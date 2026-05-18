@@ -147,6 +147,7 @@ CREATE TABLE charges (
     meter_stop DECIMAL(12,5) NULL,
     current_reading DECIMAL(12,5) NULL,
     amount DECIMAL(10,2) NULL,
+    est_cost DECIMAL(10,2) NULL,
     status ENUM('PENDING', 'CHARGING','COMPLETED', 'PAUSED', 'CANCELLED') DEFAULT 'PENDING',
     vehicle_number VARCHAR(255),
     ocpp_transaction_id INT NULL,

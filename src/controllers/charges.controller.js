@@ -206,7 +206,7 @@ export async function createCharge(payload) {
 // update the current meter readings while charging
 // =====================================================
 
-export async function updateMeterReadings(txId, meterStopValue) {
+export async function updateMeterReadings(txId, meterStopValue, estimatedAmount) {
     const connection = await pool.getConnection();
 
     try {
@@ -214,9 +214,10 @@ export async function updateMeterReadings(txId, meterStopValue) {
         await connection.query(
             `UPDATE charges
              SET meter_stop = ?, 
+                 est_cost = ?,
                  updated_at = NOW()
              WHERE ocpp_transaction_id = ?`,
-            [meterStopValue, txId]
+            [meterStopValue, estimatedAmount, txId]
         );
     } finally {
         connection.release();
@@ -385,6 +386,7 @@ export const getActiveChargingSession = async (req, res) => {
                 ch.meter_start,
                 ch.meter_stop,
                 ch.amount,
+                ch.est_cost,
                 ch.status,
                 ch.vehicle_number,
                 ch.ocpp_transaction_id,
