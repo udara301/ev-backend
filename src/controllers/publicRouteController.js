@@ -27,7 +27,7 @@ export const getChargersPublic = async (req, res) => {
         ct.current_type,
         ct.description,
         ct.created_at AS type_created_at,
-        -- Agent Details (Optional)
+        -- Agent Details
         a.id AS agent_id,
         a.contact_person AS agent_contact_person,
         a.phone_number AS agent_phone,
@@ -40,11 +40,10 @@ export const getChargersPublic = async (req, res) => {
         con.output_voltage,
         con.connector_type,
         con.max_power_kw,
-        con.amperage,
-        con.active_charge_id
+        con.amperage
       FROM chargers c
       JOIN charger_types ct ON c.charger_type_id = ct.id
-      LEFT JOIN agents a ON c.agent_id = a.id
+            JOIN agents a ON c.agent_id = a.id
       LEFT JOIN connectors con ON con.charger_id = c.id
       ORDER BY c.id DESC, con.connector_id ASC  -- Order by charger, then connector
     `);
@@ -57,8 +56,6 @@ export const getChargersPublic = async (req, res) => {
                 chargerMap.set(chargerId, {
                     charger_id: row.charger_id,
                     ocpp_id: row.ocpp_id,
-                    serial_number: row.serial_number,
-                    checksum: row.checksum,
                     location: row.location,
                     latitude: row.latitude || '',
                     longitude: row.longitude || '',
@@ -77,15 +74,11 @@ export const getChargersPublic = async (req, res) => {
                         input_voltage: row.input_voltage,
                         current_type: row.current_type,
                         description: row.description,
-                        created_at: row.type_created_at
                     },
                     agent: row.agent_id
                         ? {
                             id: row.agent_id,
-                            contact_person: row.agent_contact_person,
-                            phone_number: row.agent_phone,
                             city: row.agent_city,
-                            status: row.agent_status
                         }
                         : null,
                     connectors: []  // Array to hold connector details
@@ -100,8 +93,7 @@ export const getChargersPublic = async (req, res) => {
                     output_voltage: row.output_voltage,
                     connector_type: row.connector_type,
                     max_power_kw: row.max_power_kw,
-                    amperage: row.amperage,
-                    active_charge_id: row.active_charge_id
+                    amperage: row.amperage
                 });
             }
         });
