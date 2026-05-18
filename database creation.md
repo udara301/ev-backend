@@ -338,3 +338,14 @@ CREATE TABLE agent_earnings (
     commission_amount DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE ocpp_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    charge_point_id VARCHAR(50),
+    message_type VARCHAR(50),
+    direction ENUM('INCOMING', 'OUTGOING'),
+    payload JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (charge_point_id),
+    INDEX (created_at)
+);

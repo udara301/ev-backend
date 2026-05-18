@@ -6,10 +6,12 @@ import { sendToUser, broadcastToFrontend } from "../websocket/frontendws.js";
 import { setChargerIdle, updateConnectorStatus } from "../controllers/ocppController.js";
 import * as walletService from "../services/wallet.service.js";
 import { sendRemoteStop } from "./ocppSender.js";
+import { writeOcppLog } from "../controllers/ocppLogController.js";
 
 // chargerPointId refers to the charger name here.
 export async function handleOcppRequest({ ws, uid, action, payload, chargePointId }) {
     console.log("OCPP ACTION:", action);
+    writeOcppLog(chargePointId, action, "INCOMING", payload);
 
     switch (action) {
         // ------------------------------

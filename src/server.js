@@ -20,7 +20,9 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
 import agentEarningsRoutes from "./routes/agentEarningsRoutes.js";
+import ocppLogRoutes from "./routes/ocppLogRoutes.js";
 import { startCancelStaleBookingsCron } from "./cron/cancelStaleBookings.js";
+import { startPurgeOcppLogsCron } from "./cron/purgeOcppLogs.js";
 
 dotenv.config();
 const app = express();
@@ -52,6 +54,9 @@ app.use("/api/v1/payouts", payoutRoutes);
 // Agent earnings routes
 app.use("/api/v1/agent-earnings", agentEarningsRoutes);
 
+// OCPP logs routes
+app.use("/api/v1/ocpp-logs", ocppLogRoutes);
+
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -68,6 +73,7 @@ app.listen(PORT, () => {
 
 // ✅ Start cron jobs
 startCancelStaleBookingsCron();
+startPurgeOcppLogsCron();
 
 // ✅ Start WebSocket server ONCE
 startFrontendWSServer(8081);
