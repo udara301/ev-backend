@@ -18,37 +18,49 @@ export async function writeOcppLog(chargePointId, messageType, direction, payloa
 
 // =====================================================
 // GET /api/v1/ocpp-logs/:chargePointId
-// Returns paginated logs for a specific charge point
+// Returns logs for a specific charge point within a date range
 // =====================================================
 export const getLogsByChargePoint = async (req, res) => {
     try {
         const { chargePointId } = req.params;
-        const page  = Math.max(parseInt(req.query.page,  10) || 1, 1);
-        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
-        const offset = (page - 1) * limit;
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                message: "startDate and endDate query parameters are required"
+            });
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            return res.status(400).json({
+                message: "Invalid startDate or endDate format"
+            });
+        }
+
+        if (start > end) {
+            return res.status(400).json({
+                message: "startDate must be before or equal to endDate"
+            });
+        }
 
         const [rows] = await pool.query(
             `SELECT id, charge_point_id, message_type, direction, payload, created_at
              FROM ocpp_logs
              WHERE charge_point_id = ?
+               AND created_at BETWEEN ? AND ?
              ORDER BY created_at DESC
-             LIMIT ? OFFSET ?`,
-            [chargePointId, limit, offset]
+             `,
+            [chargePointId, start, end]
         );
-
-        const [countRows] = await pool.query(
-            `SELECT COUNT(*) AS total FROM ocpp_logs WHERE charge_point_id = ?`,
-            [chargePointId]
-        );
-
-        const total = countRows[0]?.total || 0;
 
         res.json({
             charge_point_id: chargePointId,
-            page,
-            limit,
-            total,
-            total_pages: Math.ceil(total / limit),
+            start_date: start.toISOString(),
+            end_date: end.toISOString(),
+            total: rows.length,
             logs: rows
         });
     } catch (err) {

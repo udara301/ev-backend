@@ -289,6 +289,8 @@ export const assignChargerToAgent = async (req, res) => {
       is_24hours_open,
       opening_time,
       closing_time,
+      latitude,
+      longitude,
       notes
     } = req.body;
 
@@ -320,6 +322,8 @@ export const assignChargerToAgent = async (req, res) => {
         location = ?,
         street_name = ?,
         city = ?,
+        latitude = ?,
+        longitude = ?,
         price_per_kwh = ?,
         is_24hours_open = ?,
         opening_time = ?,
@@ -333,6 +337,8 @@ export const assignChargerToAgent = async (req, res) => {
         location,
         street_name,
         city,
+        latitude,
+        longitude,  
         price_per_kwh,
         is_24hours_open,
         opening_time || null,
@@ -419,6 +425,8 @@ export const getChargersForAgent = async (req, res) => {
           agent_id: row.agent_id,
           user_id: row.user_id,
           location: row.location,
+          latitude: row.latitude,
+          longitude: row.longitude,
           street_name: row.street_name,
           city: row.city,
           price_per_kwh: row.price_per_kwh,
@@ -497,6 +505,8 @@ export const editChargerAgent = async (req, res) => {
       id,                // Charger ID
       ocpp_id,
       location,
+      latitude,
+      longitude,
       street_name,
       city,
       price_per_kwh,
@@ -528,6 +538,8 @@ export const editChargerAgent = async (req, res) => {
       UPDATE chargers
       SET
         location = ?,
+        latitude = ?,
+        longitude = ?,
         street_name = ?,
         city = ?,
         price_per_kwh = ?,
@@ -539,6 +551,8 @@ export const editChargerAgent = async (req, res) => {
       `,
       [
         location,
+        latitude,
+        longitude,
         street_name,
         city,
         price_per_kwh,
@@ -653,6 +667,8 @@ export const getChargersPublic = async (req, res) => {
         c.serial_number,
         c.name,
         c.location,
+        c.latitude,
+        c.longitude,
         c.status,
        
         -- Charger Type Details
