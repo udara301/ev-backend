@@ -32,14 +32,14 @@ router.use(verifyToken);
  *             type: object
  *             required:
  *               - model
- *               - input_voltage
+ *               - rated_power
  *               - number_of_ports
  *               - current_type
  *             properties:
  *               model:
  *                 type: string
  *                 example: CHY4442
- *               input_voltage:
+ *               rated_power:
  *                 type: string
  *                 example: 400V AC
  *               number_of_ports:

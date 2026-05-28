@@ -23,7 +23,7 @@ export const getChargersPublic = async (req, res) => {
         -- Charger Type Details
         ct.id AS type_id,
         ct.model AS type_model,
-        ct.input_voltage,
+        ct.rated_power,
         ct.current_type,
         ct.description,
         ct.created_at AS type_created_at,
@@ -71,7 +71,7 @@ export const getChargersPublic = async (req, res) => {
                     charger_type: {
                         id: row.type_id,
                         model: row.type_model,
-                        input_voltage: row.input_voltage,
+                        rated_power: row.rated_power,
                         current_type: row.current_type,
                         description: row.description,
                     },

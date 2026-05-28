@@ -11,7 +11,9 @@ export const addChargerType = async (req, res) => {
 
         const {
             model,
-            input_voltage,
+            rated_power,
+            datasheet,
+            brand,
             number_of_ports,
             current_type,
             description,
@@ -28,14 +30,16 @@ export const addChargerType = async (req, res) => {
 
         await pool.query(
             `INSERT INTO charger_types 
-      (model, input_voltage, number_of_ports, current_type, description, connector_data) 
-      VALUES (?, ?, ?, ?, ?, ?)`,
+      (model, rated_power, number_of_ports, current_type, description, datasheet, brand, connector_data) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 model,
-                input_voltage,
+                rated_power,
                 number_of_ports,
                 current_type,
                 description,
+                datasheet,
+                brand,
                 JSON.stringify(connector_data),
             ]
         );
@@ -114,18 +118,23 @@ export const updateChargerType = async (req, res) => {
         const { chargerTypeId } = req.params;
         const {
             model,
-            input_voltage,
+            rated_power,
+            datasheet,
+            brand,
             current_type,
+
             description
         } = req.body;
 
         const [result] = await pool.query(
             `UPDATE charger_types 
-       SET model=?, input_voltage=?, current_type=?, description=?
+       SET model=?, rated_power=?, datasheet=?, brand=?, current_type=?, description=?
        WHERE id=?`,
             [
                 model,
-                input_voltage,
+                rated_power,
+                datasheet,
+                brand,
                 current_type,
                 description,
                 chargerTypeId,

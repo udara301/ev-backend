@@ -85,7 +85,7 @@ const router = express.Router();
  *                       model:
  *                         type: string
  *                         description: Charger model
- *                       input_voltage:
+ *                       rated_power:
  *                         type: string
  *                         description: Input voltage
  *                       current_type:

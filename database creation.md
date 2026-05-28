@@ -15,7 +15,7 @@ CREATE TABLE users (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role ENUM('COMPANY_ADMIN','AGENT_ADMIN','CUSTOMER') DEFAULT 'CUSTOMER',
+  role ENUM('COMPANY_ADMIN','AGENT_ADMIN','CUSTOMER', 'AFFILIATE') DEFAULT 'CUSTOMER',
   reset_token VARCHAR(255) NULL,
   reset_token_expire DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -68,12 +68,14 @@ VALUES (3, 'John Doe', '+94 77 123 4567', '123 Main Street', 'Colombo', 'ACTIVE'
 -- ========================
 CREATE TABLE charger_types (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    model VARCHAR(100) NOT NULL,              -- e.g., "AC Type 2", "DC Fast Charger"
-    input_voltage VARCHAR(100),             
+    model VARCHAR(100) NOT NULL,              -- e.g., "AC Type 2", "DC Fast Charger".
+    brand VARCHAR(255),
+    rated_power VARCHAR(100),             
     number_of_ports  INT DEFAULT 1,
     connector_data JSON,              
     current_type ENUM('AC', 'DC') DEFAULT 'AC',
     description TEXT NULL,
+    datasheet TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -81,9 +83,9 @@ CREATE TABLE charger_types (
 -- Sample Charger Type
 -- ========================
 
-INSERT INTO charger_types (model, input_voltage, output_voltage, connector_type, number_of_ports, max_power_kw, amperage, current_type)
+INSERT INTO charger_types (model, rated_power, output_voltage, connector_type, number_of_ports, max_power_kw, amperage, current_type)
 VALUES 
-('ABC5010', '230V', '230V', 'Type 1',2, 7.4, '32A', 'AC' );
+('ABC5010', '24W', '230V', 'Type 1',2, 7.4, '32A', 'AC' );
 
 
 -- ========================
@@ -349,3 +351,64 @@ CREATE TABLE ocpp_logs (
     INDEX (charge_point_id),
     INDEX (created_at)
 );
+
+CREATE TABLE affiliate_profiles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE,
+    commission_rate_pct DECIMAL(5,2) DEFAULT 5.00,
+    current_points INT DEFAULT 0,
+    total_points_earned INT DEFAULT 0,
+    status ENUM('ACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE coupons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    affiliate_id INT NOT NULL,
+    code VARCHAR(20) UNIQUE NOT NULL, 
+    discount_pct DECIMAL(5,2) NOT NULL, 
+    max_uses_per_user INT DEFAULT 1, 
+    expiry_date DATETIME NULL, 
+    is_active TINYINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (affiliate_id) REFERENCES affiliate_profiles(id) ON DELETE CASCADE
+);
+
+CREATE TABLE coupon_usages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    coupon_id INT NOT NULL,
+    customer_id BIGINT NOT NULL,
+    charge_id BIGINT NOT NULL,
+    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES users(id),
+    FOREIGN KEY (charge_id) REFERENCES charges(id)
+);
+
+CREATE TABLE redeemable_packages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    package_name VARCHAR(50) NOT NULL, 
+    points_required INT NOT NULL, 
+    actual_value DECIMAL(10,2) NOT NULL, 
+    is_active TINYINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE point_redemptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    affiliate_id INT NOT NULL,
+    package_id INT NOT NULL,
+    points_deducted INT NOT NULL,
+    status ENUM('REQUESTED', 'REDEEMED') DEFAULT 'REQUESTED',
+    wallet_value_added DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (affiliate_id) REFERENCES affiliate_profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (package_id) REFERENCES redeemable_packages(id)
+);
+
+ALTER TABLE charges 
+ADD COLUMN applied_coupon_id INT NULL AFTER customer_id,
+ADD COLUMN affiliate_points_earned INT DEFAULT 0 AFTER applied_coupon_id,
+ADD CONSTRAINT fk_charges_coupon FOREIGN KEY (applied_coupon_id) REFERENCES coupons(id);

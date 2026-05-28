@@ -155,9 +155,10 @@ export const updateBookingStatus = async (req, res) => {
 export const getAllBookingsForAdmin = async (req, res) => {
     try {
         const [rows] = await pool.query(
-            `SELECT b.*, u.name AS customer_name, u.email AS customer_email, m.model_name, v.plate_number
+            `SELECT b.*, u.name AS customer_name, u.email AS customer_email, c.phone_number AS customer_phone_number, c.address AS customer_address, m.model_name, v.plate_number
              FROM bookings b
              JOIN users u ON b.user_id = u.id
+             LEFT JOIN customers c ON b.user_id = c.user_id
              JOIN vehicles v ON b.vehicle_id = v.vehicle_id
              JOIN vehicle_models m ON v.model_id = m.model_id
              ORDER BY b.created_at DESC`

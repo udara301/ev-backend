@@ -107,7 +107,7 @@ export const getChargersAdmin = async (req, res) => {
         -- Charger Type Details
         ct.id AS type_id,
         ct.model AS type_model,
-        ct.input_voltage,
+        ct.rated_power,
         ct.current_type,
         ct.description,
         ct.connector_data,
@@ -145,7 +145,7 @@ export const getChargersAdmin = async (req, res) => {
       charger_type: {
         id: row.type_id,
         model: row.type_model,
-        input_voltage: row.input_voltage,
+        rated_power: row.rated_power,
         current_type: row.current_type,
         description: row.description,
         connector_data: row.connector_data ? JSON.parse(row.connector_data) : [],
@@ -674,7 +674,7 @@ export const getChargersPublic = async (req, res) => {
         -- Charger Type Details
         ct.id AS type_id,
         ct.model AS type_model,
-        ct.input_voltage,
+        ct.rated_power,
         ct.output_voltage,
         ct.amperage,
         ct.current_type,
