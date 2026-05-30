@@ -34,7 +34,7 @@ export async function updateConnectorHeartbeat(chargePointId) {
     const conn = await pool.getConnection();
     try {
         await conn.query(
-            "UPDATE chargers SET updated_at = CURRENT_TIMESTAMP WHERE charger_id = ?",
+            "UPDATE chargers SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             [chargePointId]
         );
         console.log(`Updated heartbeat for charger ${chargePointId}`);

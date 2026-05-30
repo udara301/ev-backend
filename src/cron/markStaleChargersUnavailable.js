@@ -12,7 +12,7 @@ export const startMarkStaleChargersUnavailableCron = () => {
             const [staleChargers] = await connection.query(
                 `SELECT id
                  FROM chargers
-                 WHERE status = 'AVAILABLE'
+                 WHERE status <> 'UNAVAILABLE'
                  AND updated_at < NOW() - INTERVAL 8 MINUTE`
             );
 
@@ -23,7 +23,7 @@ export const startMarkStaleChargersUnavailableCron = () => {
                     `UPDATE chargers
                      SET status = 'UNAVAILABLE'
                      WHERE id IN (?)
-                     AND status = 'AVAILABLE'`,
+                     AND status <> 'UNAVAILABLE'`,
                     [chargerIds]
                 );
 
