@@ -3,7 +3,7 @@ import { pool } from "../config/db.js";
 import * as chargerService from "../services/charger.service.js";
 import * as chargeController from "../controllers/charges.controller.js";
 import { sendToUser, broadcastToFrontend } from "../websocket/frontendws.js";
-import { setChargerIdle, updateConnectorStatus } from "../controllers/ocppController.js";
+import { setChargerIdle, updateConnectorStatus, updateConnectorHeartbeat } from "../controllers/ocppController.js";
 import * as walletService from "../services/wallet.service.js";
 import { sendRemoteStop } from "./ocppSender.js";
 import { writeOcppLog } from "../controllers/ocppLogController.js";
@@ -31,6 +31,8 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
         // 2. Heartbeat
         // ------------------------------
         case "Heartbeat":
+            console.log(`💓 Heartbeat from ${chargePointId}`);
+            await updateConnectorHeartbeat(chargePointId);
             ws.send(JSON.stringify([3, uid, { currentTime: new Date().toISOString() }]));
             break;
 

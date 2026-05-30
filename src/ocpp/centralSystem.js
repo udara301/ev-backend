@@ -18,10 +18,14 @@ console.log(`🚀 OCPP Server running on ws://localhost:${PORT}`);
 wss.on("connection", (ws, req) => {
     const urlParts = req.url.split("/");
     const chargePointId = urlParts.pop();
-
+    ws.isAlive = true;
     console.log(`🔌 Charger connected: ${chargePointId}`);
 
     connectedChargers.set(chargePointId, ws);
+
+    ws.on('pong', () => {
+        ws.isAlive = true;
+    });
 
     ws.on("message", async (msg) => {
         try {
@@ -44,10 +48,10 @@ wss.on("connection", (ws, req) => {
 
     ws.on("close", () => {
         console.log(`❌ Charger disconnected: ${chargePointId}`);
-        
+
         // Handle  CHARGING sessions due to power cut / internet loss
         handleUnplannedCharges(chargePointId);
-        
+
         broadcastToFrontend({
             type: "connector_status_updated",
             chargerId: chargePointId,
@@ -57,6 +61,23 @@ wss.on("connection", (ws, req) => {
         setChargerUnavailable(chargePointId);
         connectedChargers.delete(chargePointId);
     });
+});
+
+
+const heartbeatInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            console.log(`⚠️ Charger ${ws.chargePointId} missed pong. Terminating connection.`);
+            return ws.terminate(); // මේකෙන් කෙළින්ම 'close' event එක ට්‍රිගර් වෙනවා
+        }
+
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000); // හැම තත්පර 30කට සැරයක්ම චෙක් කරනවා
+
+wss.on('close', () => {
+    clearInterval(heartbeatInterval);
 });
 
 // Handle CHARGING sessions left unplanned by charger disconnect
@@ -89,6 +110,8 @@ async function handleUnplannedCharges(chargePointId) {
 
         for (const charge of chargingCharges) {
             try {
+                await connection.beginTransaction();
+
                 // Calculate final cost using last recorded meter reading
                 const meterStop = charge.meter_stop ?? charge.meter_start ?? 0;
                 const energyUsed = meterStop - (charge.meter_start ?? 0);
@@ -113,19 +136,17 @@ async function handleUnplannedCharges(chargePointId) {
                     );
 
                     if (userRows[0]?.role === "CUSTOMER") {
-                        try {
-                            await walletService.deductBalance(
-                                charge.customer_id,
-                                charge.id,
-                                cost,
-                                chargePointId
-                            );
-                            console.log(`[UNPLANNED] Wallet deducted for customer ${charge.customer_id}: ${cost.toFixed(2)} LKR`);
-                        } catch (walletErr) {
-                            console.error(`[UNPLANNED] Wallet deduction failed for customer ${charge.customer_id}:`, walletErr.message);
-                        }
+                        await walletService.deductBalance(
+                            charge.customer_id,
+                            charge.id,
+                            cost,
+                            chargePointId
+                        );
+                        console.log(`[UNPLANNED] Wallet deducted for customer ${charge.customer_id}: ${cost.toFixed(2)} LKR`);
                     }
                 }
+
+                await connection.commit();
 
                 // Notify customer about the auto-completion
                 if (charge.customer_id) {
@@ -155,6 +176,7 @@ async function handleUnplannedCharges(chargePointId) {
                     });
                 }
             } catch (chargeErr) {
+                await connection.rollback();
                 console.error(`[UNPLANNED] Error processing charge ${charge.id}:`, chargeErr);
             }
         }

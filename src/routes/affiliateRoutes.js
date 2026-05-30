@@ -1,47 +1,79 @@
 import express from "express";
-import { verifyToken } from "../middleware/authMiddleware.js";
-import { createAffiliateProfile } from "../controllers/affiliateController.js";
+import {
+	createAffiliateProfile,
+	loginAffiliate,
+} from "../controllers/affiliateController.js";
 
 const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/affiliates/profiles:
+ * /api/v1/affiliates/signup:
  *   post:
- *     summary: Create an affiliate profile
+ *     summary: Create affiliate account and profile
  *     tags: [Affiliates]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [name, email, phone, password]
  *             properties:
- *               user_id:
- *                 type: integer
- *                 description: Only for COMPANY_ADMIN to create profile for a specific affiliate user
- *               commission_rate_pct:
- *                 type: number
- *                 example: 5
- *               status:
+ *               name:
  *                 type: string
- *                 enum: [ACTIVE, SUSPENDED]
+ *                 example: Jane Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: jane@example.com
+ *               phone:
+ *                 type: string
+ *                 example: "+94771234567"
+ *               password:
+ *                 type: string
+ *                 example: SecurePass123!
  *     responses:
  *       201:
  *         description: Affiliate profile created successfully
  *       400:
- *         description: Invalid payload or selected user is not an affiliate
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: User not found
+ *         description: Invalid payload
  *       409:
- *         description: Affiliate profile already exists
+ *         description: Email already exists
  */
-router.post("/profiles", verifyToken, createAffiliateProfile);
+router.post("/signup", createAffiliateProfile);
+
+/**
+ * @swagger
+ * /api/v1/affiliates/login:
+ *   post:
+ *     summary: Login affiliate user
+ *     tags: [Affiliates]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: jane@example.com
+ *               password:
+ *                 type: string
+ *                 example: SecurePass123!
+ *     responses:
+ *       200:
+ *         description: Affiliate login successful
+ *       400:
+ *         description: Invalid payload or credentials
+ *       403:
+ *         description: User is not an affiliate or account is suspended
+ *       404:
+ *         description: Affiliate profile not found
+ */
+router.post("/login", loginAffiliate);
 
 export default router;

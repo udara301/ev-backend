@@ -24,6 +24,7 @@ import ocppLogRoutes from "./routes/ocppLogRoutes.js";
 import affiliateRoutes from "./routes/affiliateRoutes.js";
 import { startCancelStaleBookingsCron } from "./cron/cancelStaleBookings.js";
 import { startPurgeOcppLogsCron } from "./cron/purgeOcppLogs.js";
+import { startMarkStaleChargersUnavailableCron } from "./cron/markStaleChargersUnavailable.js";
 
 dotenv.config();
 const app = express();
@@ -76,6 +77,7 @@ app.listen(PORT, () => {
 // ✅ Start cron jobs
 startCancelStaleBookingsCron();
 startPurgeOcppLogsCron();
+startMarkStaleChargersUnavailableCron();
 
 // ✅ Start WebSocket server ONCE
 startFrontendWSServer(8081);

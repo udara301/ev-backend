@@ -114,6 +114,7 @@ CREATE TABLE chargers (
     price_per_kwh DECIMAL(10,2) NULL,            -- Charging price per kWh
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (charger_type_id) REFERENCES charger_types(id) ON DELETE RESTRICT
 );
@@ -355,7 +356,9 @@ CREATE TABLE ocpp_logs (
 CREATE TABLE affiliate_profiles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE,
-    commission_rate_pct DECIMAL(5,2) DEFAULT 5.00,
+    phone_number VARCHAR(20),
+    points_pct_charging INT DEFAULT 5,
+    points_pct_renting INT DEFAULT 10,
     current_points INT DEFAULT 0,
     total_points_earned INT DEFAULT 0,
     status ENUM('ACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
