@@ -22,6 +22,8 @@ import payoutRoutes from "./routes/payoutRoutes.js";
 import agentEarningsRoutes from "./routes/agentEarningsRoutes.js";
 import ocppLogRoutes from "./routes/ocppLogRoutes.js";
 import affiliateRoutes from "./routes/affiliateRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
+import couponRoutes from "./routes/couponRoutes.js";
 import { startCancelStaleBookingsCron } from "./cron/cancelStaleBookings.js";
 import { startPurgeOcppLogsCron } from "./cron/purgeOcppLogs.js";
 import { startMarkStaleChargersUnavailableCron } from "./cron/markStaleChargersUnavailable.js";
@@ -48,6 +50,8 @@ app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/wallet", walletRoutes);
 app.use("/api/v1/affiliates", affiliateRoutes);
+app.use("/api/v1/settings", settingsRoutes);
+app.use("/api/v1/coupons", couponRoutes);
 
 // Payout routes
 app.use("/api/v1/payouts", payoutRoutes);

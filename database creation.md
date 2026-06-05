@@ -369,8 +369,10 @@ CREATE TABLE affiliate_profiles (
 CREATE TABLE coupons (
     id INT AUTO_INCREMENT PRIMARY KEY,
     affiliate_id INT NOT NULL,
+    label VARCHAR(255),  
     code VARCHAR(20) UNIQUE NOT NULL, 
-    discount_pct DECIMAL(5,2) NOT NULL, 
+    discount_pct_per_charging INT DEFAULT 5, 
+    discount_pct_per_renting INT DEFAULT 10, 
     max_uses_per_user INT DEFAULT 1, 
     expiry_date DATETIME NULL, 
     is_active TINYINT DEFAULT 1,
@@ -415,3 +417,21 @@ ALTER TABLE charges
 ADD COLUMN applied_coupon_id INT NULL AFTER customer_id,
 ADD COLUMN affiliate_points_earned INT DEFAULT 0 AFTER applied_coupon_id,
 ADD CONSTRAINT fk_charges_coupon FOREIGN KEY (applied_coupon_id) REFERENCES coupons(id);
+
+CREATE TABLE system_settings (
+    setting_key VARCHAR(50) PRIMARY KEY, 
+    setting_name VARCHAR(255) NOT NULL, 
+    setting_value VARCHAR(255) NOT NULL, 
+    setting_category ENUM('GENERAL', 'CHARGING', 'AFFILIATE', 'RENTING') DEFAULT 'GENERAL',
+    unit VARCHAR(20) NULL,
+    description VARCHAR(255), 
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+INSERT INTO system_settings (setting_key, setting_value, setting_category,unit, description) VALUES
+('points_pct_charging','Points Per Charge', '5', 'AFFILIATE', 'Points', 'Default points per 100 expense given to affiliates as points for charging'),
+('points_pct_renting','Points Per Rent', '10', 'AFFILIATE', 'Points', 'Default points per 100 expense given to affiliates as points for renting'),
+('discount_pct_per_charging', 'Discount Per Charge','5', 'AFFILIATE', '%',  'Default discount percentage given to customers using a coupon for charging'),
+('discount_pct_per_renting', 'Discount Per Rent',''10', 'AFFILIATE', '%', 'Default discount percentage given to customers using a coupon for renting'),
+('min_points_to_redeem', 'Min Points to Redeem' '100', 'AFFILIATE', 'Rs','Minimum points an affiliate must accumulate before redeeming');
