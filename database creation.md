@@ -284,6 +284,7 @@ CREATE TABLE customers (
     dropoff_date DATETIME NOT NULL,
     dropoff_time TIME NOT NULL,
     total_price DECIMAL(10, 2) NOT NULL,
+    total_price_before_discount DECIMAL(10, 2) NOT NULL,
     booking_status ENUM('pending', 'confirmed', 'ongoing', 'completed', 'cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -384,12 +385,14 @@ CREATE TABLE coupon_usages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     coupon_id INT NOT NULL,
     customer_id BIGINT NOT NULL,
-    charge_id BIGINT NOT NULL,
+    charge_id BIGINT,
+    booking_id INT,
     used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
     FOREIGN KEY (customer_id) REFERENCES users(id),
-    FOREIGN KEY (charge_id) REFERENCES charges(id)
+    FOREIGN KEY (charge_id) REFERENCES charges(id),
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
 );
 
 CREATE TABLE redeemable_packages (
@@ -416,7 +419,14 @@ CREATE TABLE point_redemptions (
 ALTER TABLE charges 
 ADD COLUMN applied_coupon_id INT NULL AFTER customer_id,
 ADD COLUMN affiliate_points_earned INT DEFAULT 0 AFTER applied_coupon_id,
+ADD COLUMN discount_applied  DECIMAL(10,2) DEFAULT 0 AFTER affiliate_points_earned,
 ADD CONSTRAINT fk_charges_coupon FOREIGN KEY (applied_coupon_id) REFERENCES coupons(id);
+
+ALTER TABLE bookings 
+ADD COLUMN applied_coupon_id INT NULL AFTER user_id,
+ADD COLUMN affiliate_points_earned INT DEFAULT 0 AFTER applied_coupon_id,
+ADD COLUMN discount_applied  DECIMAL(10,2) DEFAULT 0 AFTER affiliate_points_earned,
+ADD CONSTRAINT fk_booking_coupon FOREIGN KEY (applied_coupon_id) REFERENCES coupons(id);
 
 CREATE TABLE system_settings (
     setting_key VARCHAR(50) PRIMARY KEY, 

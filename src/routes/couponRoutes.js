@@ -3,6 +3,7 @@ import {
   createCoupon,
   getAffiliateCoupons,
   deactivateCoupon,
+  applyCouponForBooking,
 } from "../controllers/couponCodeController.js";
 import { authorize, verifyToken } from "../middleware/authMiddleware.js";
 
@@ -99,5 +100,42 @@ router.get("/", verifyToken, authorize(["AFFILIATE"]), getAffiliateCoupons);
  *         description: Server error
  */
 router.patch("/:couponId", verifyToken, authorize(["AFFILIATE"]), deactivateCoupon);
+
+/**
+ * @swagger
+ * /api/v1/coupons/apply-booking:
+ *   post:
+ *     summary: Apply coupon to a booking amount and return discounted value (CUSTOMER only)
+ *     tags: [Coupons]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [coupon_code, amount]
+ *             properties:
+ *               coupon_code:
+ *                 type: string
+ *                 example: A1B2C3
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 example: 12000
+ *     responses:
+ *       200:
+ *         description: Coupon applied successfully
+ *       400:
+ *         description: Invalid payload, coupon inactive/expired, or usage limit reached
+ *       403:
+ *         description: Forbidden (only customers)
+ *       404:
+ *         description: Coupon not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/apply-booking", verifyToken, authorize(["CUSTOMER"]), applyCouponForBooking);
 
 export default router;

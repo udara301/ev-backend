@@ -45,8 +45,20 @@ export const searchAvailableVehicles = async (req, res) => {
 export const placeBooking = async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const { vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price } = req.body;
+        const {
+            vehicle_id,
+            pickup_date,
+            pickup_time,
+            dropoff_date,
+            dropoff_time,
+            total_price,
+            coupon_code,
+            discount_applied,
+            total_price_before_discount
+        } = req.body;
         const user_id = req.user.id;
+        let applied_coupon_id = null;
+        let discountAppliedValue = 0;
 
         await connection.beginTransaction();
 
@@ -63,10 +75,59 @@ export const placeBooking = async (req, res) => {
             return res.status(400).json({ message: "Sorry, the vehicle is already booked for the selected dates." });
         }
 
+        if (coupon_code) {
+            const normalizedCode = String(coupon_code).trim().toUpperCase();
+            const [couponRows] = await connection.query(
+                "SELECT id FROM coupons WHERE code = ?",
+                [normalizedCode]
+            );
+
+            if (couponRows.length === 0) {
+                await connection.rollback();
+                return res.status(400).json({ message: "Invalid coupon_code" });
+            }
+
+            applied_coupon_id = couponRows[0].id;
+
+            if (discount_applied !== undefined) {
+                const numericDiscount = Number(discount_applied);
+                if (Number.isNaN(numericDiscount) || numericDiscount < 0) {
+                    await connection.rollback();
+                    return res.status(400).json({
+                        message: "discount_applied must be a valid non-negative number",
+                    });
+                }
+                discountAppliedValue = numericDiscount;
+            }
+        }
+
         // 2. Save the booking
         const [booking] = await connection.query(
-            "INSERT INTO bookings (user_id, vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')",
-            [user_id, vehicle_id, pickup_date, pickup_time, dropoff_date, dropoff_time, total_price]
+            `INSERT INTO bookings (
+                user_id,
+                applied_coupon_id,
+                discount_applied,
+                vehicle_id,
+                pickup_date,
+                pickup_time,
+                dropoff_date,
+                dropoff_time,
+                total_price,
+                total_price_before_discount,
+                booking_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+            [
+                user_id,
+                applied_coupon_id,
+                discountAppliedValue,
+                vehicle_id,
+                pickup_date,
+                pickup_time,
+                dropoff_date,
+                dropoff_time,
+                total_price,
+                total_price_before_discount
+            ]
         );
 
         await connection.commit();

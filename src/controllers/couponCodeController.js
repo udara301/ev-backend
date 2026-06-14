@@ -319,3 +319,90 @@ export const deactivateCoupon = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+/**
+ * Apply coupon for a booking amount (CUSTOMER only)
+ * POST /api/v1/coupons/apply-booking
+ */
+export const applyCouponForBooking = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "CUSTOMER") {
+      return res.status(403).json({
+        message: "Forbidden: Only customers can apply booking coupons",
+      });
+    }
+
+    const { coupon_code, amount } = req.body;
+
+    if (!coupon_code || amount === undefined) {
+      return res.status(400).json({
+        message: "coupon_code and amount are required",
+      });
+    }
+
+    const bookingAmount = Number(amount);
+    if (Number.isNaN(bookingAmount) || bookingAmount <= 0) {
+      return res.status(400).json({
+        message: "amount must be a valid number greater than 0",
+      });
+    }
+
+    const normalizedCode = String(coupon_code).trim().toUpperCase();
+
+    const [couponRows] = await pool.query(
+      `SELECT id, code, label, discount_pct_per_renting, max_uses_per_user, expiry_date, is_active
+       FROM coupons
+       WHERE code = ?`,
+      [normalizedCode]
+    );
+
+    if (couponRows.length === 0) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+
+    const coupon = couponRows[0];
+
+    if (coupon.is_active !== 1) {
+      return res.status(400).json({ message: "Coupon is inactive" });
+    }
+
+    if (coupon.expiry_date && new Date(coupon.expiry_date) < new Date()) {
+      return res.status(400).json({ message: "Coupon has expired" });
+    }
+
+    const userId = req.user.id;
+    const [usageRows] = await pool.query(
+      `SELECT COUNT(*) AS usage_count
+       FROM coupon_usages
+       WHERE coupon_id = ? AND customer_id = ?`,
+      [coupon.id, userId]
+    );
+
+    const usageCount = usageRows[0]?.usage_count || 0;
+    if (usageCount >= coupon.max_uses_per_user) {
+      return res.status(400).json({
+        message: "Coupon usage limit reached for this user",
+      });
+    }
+
+    const discountPct = Number(coupon.discount_pct_per_renting) || 0;
+    const discountAmount = Number(((bookingAmount * discountPct) / 100).toFixed(2));
+    const discountedValue = Number((bookingAmount - discountAmount).toFixed(2));
+
+    return res.status(200).json({
+      message: "Coupon applied successfully",
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        label: coupon.label,
+        discount_pct_per_renting: discountPct,
+      },
+      amount: bookingAmount,
+      discount_amount: discountAmount,
+      discounted_value: discountedValue,
+    });
+  } catch (err) {
+    console.error("Error applying booking coupon:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

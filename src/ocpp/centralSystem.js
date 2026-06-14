@@ -41,6 +41,8 @@ wss.on("connection", (ws, req) => {
                     chargePointId
                 });
             }
+
+            console.log(`📩 Received message from ${chargePointId}:`, { msgType, uid, action, payload });
         } catch (err) {
             console.error("❌ Invalid OCPP message:", err);
         }

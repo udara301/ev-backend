@@ -34,8 +34,118 @@ export const handlePaymentNotify = async (req, res) => {
         console.log("Parsed - order_id:", order_id, "status_code:", status_code, "md5sig:", md5sig);
 
         if (status_code === "2") {
-            await pool.query("UPDATE payments SET payment_status = 'success' WHERE booking_id = ?", [order_id]);
-            await pool.query("UPDATE bookings SET booking_status = 'confirmed' WHERE booking_id = ?", [order_id]);
+            const connection = await pool.getConnection();
+            try {
+                await connection.beginTransaction();
+
+                await connection.query(
+                    "UPDATE payments SET payment_status = 'success' WHERE booking_id = ?",
+                    [order_id]
+                );
+
+                const [[bookingRow]] = await connection.query(
+                    `SELECT booking_id, user_id, applied_coupon_id, total_price_before_discount, total_price
+                     FROM bookings
+                     WHERE booking_id = ?
+                     LIMIT 1`,
+                    [order_id]
+                );
+
+                if (!bookingRow) {
+                    await connection.rollback();
+                    return res.status(404).send("Booking not found");
+                }
+
+                let affiliatePointsEarned = 0;
+
+                if (bookingRow.applied_coupon_id) {
+                    const [[couponOwnerProfile]] = await connection.query(
+                        `SELECT ap.points_pct_charging
+                         FROM coupons c
+                         JOIN affiliate_profiles ap ON ap.id = c.affiliate_id
+                         WHERE c.id = ?
+                         LIMIT 1`,
+                        [bookingRow.applied_coupon_id]
+                    );
+
+                    const pointsPctCharging = Number(couponOwnerProfile?.points_pct_charging ?? 0);
+                    const totalBeforeDiscount = Number(
+                        bookingRow.total_price_before_discount ?? bookingRow.total_price ?? 0
+                    );
+
+                    if (!Number.isNaN(pointsPctCharging) && !Number.isNaN(totalBeforeDiscount)) {
+                        affiliatePointsEarned = Math.floor((totalBeforeDiscount * pointsPctCharging) / 100);
+                    }
+
+                    const [couponUsageColumns] = await connection.query(
+                        `SELECT COLUMN_NAME
+                         FROM INFORMATION_SCHEMA.COLUMNS
+                         WHERE TABLE_SCHEMA = DATABASE()
+                           AND TABLE_NAME = 'coupon_usages'`
+                    );
+
+                    const hasBookingId = couponUsageColumns.some(
+                        (column) => column.COLUMN_NAME === "booking_id"
+                    );
+                    const hasChargeId = couponUsageColumns.some(
+                        (column) => column.COLUMN_NAME === "charge_id"
+                    );
+
+                    try {
+                        if (hasBookingId) {
+                            const [existingUsage] = await connection.query(
+                                `SELECT id
+                                 FROM coupon_usages
+                                 WHERE coupon_id = ? AND customer_id = ? AND booking_id = ?
+                                 LIMIT 1`,
+                                [bookingRow.applied_coupon_id, bookingRow.user_id, bookingRow.booking_id]
+                            );
+
+                            if (existingUsage.length === 0) {
+                                await connection.query(
+                                    `INSERT INTO coupon_usages (coupon_id, customer_id, booking_id)
+                                     VALUES (?, ?, ?)`,
+                                    [bookingRow.applied_coupon_id, bookingRow.user_id, bookingRow.booking_id]
+                                );
+                            }
+                        } else if (hasChargeId) {
+                            const [existingUsage] = await connection.query(
+                                `SELECT id
+                                 FROM coupon_usages
+                                 WHERE coupon_id = ? AND customer_id = ? AND charge_id = ?
+                                 LIMIT 1`,
+                                [bookingRow.applied_coupon_id, bookingRow.user_id, bookingRow.booking_id]
+                            );
+
+                            if (existingUsage.length === 0) {
+                                await connection.query(
+                                    `INSERT INTO coupon_usages (coupon_id, customer_id, charge_id)
+                                     VALUES (?, ?, ?)`,
+                                    [bookingRow.applied_coupon_id, bookingRow.user_id, bookingRow.booking_id]
+                                );
+                            }
+                        }
+                    } catch (couponUsageErr) {
+                        console.warn("Coupon usage insert skipped:", couponUsageErr.message);
+                    }
+                }
+
+                await connection.query(
+                    `UPDATE bookings
+                     SET booking_status = 'confirmed',
+                         affiliate_points_earned = ?
+                     WHERE booking_id = ?`,
+                    [affiliatePointsEarned, order_id]
+                );
+
+                await connection.commit();
+            } catch (dbErr) {
+                await connection.rollback();
+                throw dbErr;
+            } finally {
+                connection.release();
+            }
+
             // Send booking confirmation email after payment success
             // Get user email and booking/vehicle info
             const [[booking]] = await pool.query(

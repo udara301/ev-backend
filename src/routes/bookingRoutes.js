@@ -145,6 +145,15 @@ router.get("/search", searchAvailableVehicles);
  *                 type: number
  *                 format: float
  *                 example: 48000
+ *               coupon_code:
+ *                 type: string
+ *                 description: Optional coupon code to apply for booking
+ *                 example: A1B2C3
+ *               discount_applied:
+ *                 type: number
+ *                 format: float
+ *                 description: Optional discount amount applied from coupon
+ *                 example: 1200
  *     responses:
  *       201:
  *         description: Booking placed successfully
