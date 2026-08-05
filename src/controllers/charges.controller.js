@@ -77,7 +77,9 @@ export const startCharging = async (req, res) => {
         const started = sendRemoteStart(chargerId, "ADMIN", parseInt(connectorId));
         console.log("Remote start command sent. OCPP response:", started);
         if (!started) {
-            // Mark charger and connector as offline
+            await connection.rollback();
+
+            // Mark charger and connector as offline after the transaction is released.
             await setChargerUnavailable(chargerId);
             await updateConnectorStatus(chargerId, connectorId, "OFFLINE");
             await connection.rollback();
@@ -295,10 +297,12 @@ export const stopCharging = async (req, res) => {
         const stopped = sendRemoteStop(chargerId, charges[0].ocpp_transaction_id);
 
         if (!stopped) {
-            // Mark charger and connector as offline
+            await connection.rollback();
+
+            // Mark charger and connector as offline after rolling back the transaction.
             await setChargerUnavailable(chargerId);
             await updateConnectorStatus(chargerId, connectorId, "UNAVAILABLE");
-            await connection.rollback();
+
             // Mark the charge session as FAILED (outside transaction)
             await pool.query(
                 `UPDATE charges SET status = 'FAILED', end_time = NOW() WHERE id = ?`,
