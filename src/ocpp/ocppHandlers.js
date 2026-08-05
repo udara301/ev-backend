@@ -97,6 +97,7 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
 
                 // If there is a charging session available for this connector
                 if (charge) {
+
                     await chargeController.updateChargeWithOcppTx(charge.id, {
                         ocpp_transaction_id: dbTxId,
                         status: "CHARGING",
@@ -174,17 +175,19 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                 const charge = await chargeController.findByOcppTransactionId(transactionId);
                 console.log("Found pending charge for stop:", charge, chargePointId);
                 if (charge) {
-                    const energyUsed = meterStop - (charge.meter_start || 0);
+
+                    if (charge.status === 'COMPLETED') {
+                        console.log(`⚠️ Transaction ${transactionId} already completed. Skipping.`);
+                        ws.send(JSON.stringify([3, uid, { idTagInfo: { status: "Accepted" } }]));
+                        return;
+                    }
+
+                    const energyUsedWh = meterStop - (charge.meter_start || 0);
+                    const energyUsedKwh = energyUsedWh / 1000;
 
                     const stopCharger = await chargerService.getChargerById(chargePointId);
-                    const cost = energyUsed * (stopCharger?.price_per_kwh || 0);
+                    const cost = energyUsedKwh * (stopCharger?.price_per_kwh || 0);
 
-                    await chargeController.stopChargeWithChargeId(charge.id, {
-                        end_time: new Date(timestamp),
-                        meter_stop: meterStop,
-                        amount: cost,
-                        status: "COMPLETED"
-                    });
                     // Only clear active charge, do not set status to AVAILABLE here --> AVAILABLE status will be set by StatusNotification from charger, which is more real-time and reliable. This also prevents potential race condition.
 
                     if (charge.customer_id && cost > 0) {
@@ -195,6 +198,14 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                         }
                     }
 
+                    await chargeController.stopChargeWithChargeId(charge.id, {
+                        end_time: new Date(timestamp),
+                        meter_stop: meterStop,
+                        amount: cost,
+                        status: "COMPLETED"
+                    });
+
+
                     if (charge.customer_id) {
                         sendToUser(charge.customer_id, {
                             type: "charging_stopped",
@@ -202,10 +213,10 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                             connectorId: charge.connector_id,
                             chargeId: charge.id,
                             amount: cost,
-                            energyUsed: energyUsed,
-                            endTime: charge.end_time,
+                            energyUsed: energyUsedKwh,
+                            endTime: new Date(timestamp),
                             status: "COMPLETED",
-                            meterStop: charge.meter_stop
+                            meterStop: meterStop
                         });
                     }
                     console.log(`StopTransaction handled: charger=${chargePointId}, connector=${charge.connector_id}, charge=${charge.id}, tx=${transactionId}`);
@@ -231,21 +242,22 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
             const txId = payload.transactionId;
             const meterConnectorId = payload.connectorId;
             const meterValue = payload.meterValue[0].sampledValue.find(v => v.measurand === "Energy.Active.Import.Register");
-            const timestamp = payload.timestamp;
+            const timestamp = payload.meterValue[0]?.timestamp || new Date().toISOString();
             if (meterValue) {
-                const currentReading = parseFloat(meterValue.value);
+                const currentReadingWh = parseFloat(meterValue.value);
 
                 // console.log(meterValue);
                 const meterCharger = await chargerService.getChargerById(chargePointId);
                 const charge = await chargeController.findByOcppTransactionId(txId);
 
                 if (meterCharger && charge) {
-                    // 1. Energy Calculation (kWh)
-                    const energyConsumedKwh = currentReading - charge.meter_start;
+                    // Meter values are received in Wh from charger; convert delta to kWh for pricing.
+                    const energyConsumedWh = currentReadingWh - (charge.meter_start || 0);
+                    const energyConsumedKwh = energyConsumedWh / 1000;
 
                     // 2. Cost Calculation
                     const currentCost = energyConsumedKwh * (meterCharger?.price_per_kwh || 0);
-                    await chargeController.updateMeterReadings(txId, currentReading, currentCost);
+                    await chargeController.updateMeterReadings(txId, currentReadingWh, currentCost);
 
                     if (charge && charge.customer_id) {
                         // Check if user is a customer (not agent) before wallet check
@@ -291,6 +303,10 @@ export async function handleOcppRequest({ ws, uid, action, payload, chargePointI
                 }
             }
             ws.send(JSON.stringify([3, uid, {}])); // Accept without error
+            break;
+
+        case "DataTransfer":
+            ws.send(JSON.stringify([3, uid, { status: "Accepted" }]));
             break;
         // ------------------------------
         // UNKNOWN ACTION
